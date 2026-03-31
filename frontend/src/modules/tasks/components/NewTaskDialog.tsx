@@ -11,7 +11,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useAuthStore, useTaskUIStore } from '@/store';
+import { useTaskUIStore } from '@/store';
 import { useCreateTask } from '../hooks';
 import { TASK_PRIORITY, TASK_STATUS, type TaskPriority, type TaskStatus } from '../types';
 
@@ -54,7 +54,6 @@ const statusOptions: Array<{ value: TaskStatus; label: string }> = [
 ];
 
 export function NewTaskDialog() {
-    const userToken = useAuthStore((state) => state.token);
     const isOpen = useTaskUIStore((state) => state.isCreateDialogOpen);
     const closeDialog = useTaskUIStore((state) => state.closeCreateDialog);
     const createTask = useCreateTask();
@@ -72,16 +71,13 @@ export function NewTaskDialog() {
     const onSubmit = handleSubmit(async (values) => {
         const payload = {
             title: values.title,
-            description: values.description,
+            ...(values.description ? { description: values.description } : {}),
             priority: values.priority,
             status: values.status,
             dueDate: toISOString(values.dueDate),
-            assigneeName: values.assigneeName,
+            ...(values.assigneeName ? { assigneeName: values.assigneeName } : {}),
         };
-        const options = {
-            headers: { Authorization: userToken ? `Bearer ${userToken}` : undefined },
-        };
-        await createTask.mutateAsync(payload, options);
+        await createTask.mutateAsync(payload);
 
         reset(DEFAULT_VALUES);
         closeDialog();

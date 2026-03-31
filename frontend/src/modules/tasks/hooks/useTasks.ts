@@ -1,8 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { TaskService } from '../services';
 import type { CreateTaskPayload, MoveTaskPayload, Task, TaskStatus, UpdateTaskPayload } from '../types';
-import { useAuthStore } from '@/store';
-import type { AxiosRequestConfig } from 'axios';
 
 export const TASKS_QUERY_KEY = ['tasks'] as const;
 
@@ -112,11 +110,11 @@ export const useCreateTask = () => {
                 priority: payload.priority,
                 status: payload.status,
                 dueDate: payload.dueDate,
-                assigneeId: payload.assigneeId,
-                assigneeName: payload.assigneeName,
                 position: nextPosition,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
+                ...(payload.assigneeId ? { assigneeId: payload.assigneeId } : {}),
+                ...(payload.assigneeName ? { assigneeName: payload.assigneeName } : {}),
             };
 
             queryClient.setQueryData<Task[]>(TASKS_QUERY_KEY, [...previousTasks, optimisticTask]);

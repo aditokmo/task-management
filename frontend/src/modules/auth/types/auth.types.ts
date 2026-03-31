@@ -2,7 +2,6 @@ export interface AuthUser {
     id: string;
     email: string;
     name?: string;
-    token?: string;
 }
 
 export interface LoginPayload {
@@ -19,6 +18,6 @@ export interface RegisterPayload {
 
 export interface AuthResponse {
     user: AuthUser;
-    token?: string;
+    accessToken: string;
     message?: string;
 }

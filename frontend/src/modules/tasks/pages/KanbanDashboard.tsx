@@ -7,7 +7,7 @@ export function KanbanDashboard() {
     const openCreateDialog = useTaskUIStore((state) => state.openCreateDialog);
 
     return (
-        <main className="min-h-screen bg-gradient-to-b from-background to-muted/30 p-4 sm:p-6">
+        <main className="px-4 py-5 sm:px-6 sm:py-6">
             <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
                 <header className="flex flex-col gap-3 rounded-xl border bg-card/90 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>

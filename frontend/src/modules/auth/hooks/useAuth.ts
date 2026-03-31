@@ -7,24 +7,23 @@ import { useAuthStore } from '@/store';
 export const useAuth = () => {
     const navigate = useNavigate();
     const setAuth = useAuthStore((state) => state.setAuth);
+    const setAccessToken = useAuthStore((state) => state.setAccessToken);
     const clearAuth = useAuthStore((state) => state.clearAuth);
+
+    const toAuthUser = (user: { id: string; email: string; name?: string }) => ({
+        id: user.id,
+        email: user.email,
+        ...(user.name ? { name: user.name } : {}),
+    });
 
     const login = useMutation({
         mutationFn: AuthService.login,
         onSuccess: async (res) => {
-            console.log(res)
-            if (res.user) {
-                setAuth({
-                    id: res.user.id,
-                    email: res.user.email,
-                    name: res.user.name,
-                    token: res.token,
-                });
+            if (res.user && res.accessToken) {
+                setAuth(toAuthUser(res.user), res.accessToken);
             }
 
             await navigate({ to: '/' });
-
-            console.log(12321)
         },
         onError: (error) => {
             const errorMessage = getAPIErrorMessage(error);
@@ -35,17 +34,27 @@ export const useAuth = () => {
     const register = useMutation({
         mutationFn: AuthService.register,
         onSuccess: async (res) => {
-            if (res.user) {
-                setAuth({
-                    id: res.user.id,
-                    email: res.user.email,
-                    name: res.user.name,
-                });
+            if (res.user && res.accessToken) {
+                setAuth(toAuthUser(res.user), res.accessToken);
             }
 
             await navigate({ to: '/' });
         },
         onError: (error) => {
+            const errorMessage = getAPIErrorMessage(error);
+            console.error(errorMessage)
+        },
+    });
+
+    const refresh = useMutation({
+        mutationFn: AuthService.refresh,
+        onSuccess: async (res) => {
+            if (res.accessToken) {
+                setAccessToken(res.accessToken);
+            }
+        },
+        onError: (error) => {
+            clearAuth();
             const errorMessage = getAPIErrorMessage(error);
             console.error(errorMessage)
         },
@@ -65,14 +74,17 @@ export const useAuth = () => {
 
     const loginErrorMessage = login.error ? getAPIErrorMessage(login.error) : null;
     const registerErrorMessage = register.error ? getAPIErrorMessage(register.error) : null;
+    const refreshErrorMessage = refresh.error ? getAPIErrorMessage(refresh.error) : null;
     const logoutErrorMessage = logout.error ? getAPIErrorMessage(logout.error) : null;
 
     return {
         login,
         register,
+        refresh,
         logout,
         loginErrorMessage,
         registerErrorMessage,
+        refreshErrorMessage,
         logoutErrorMessage,
     }
 }

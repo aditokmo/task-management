@@ -15,15 +15,19 @@ export class AuthService {
         private readonly configService: ConfigService,
     ) { }
 
+    private get userModel() {
+        return (this.prisma as any).user;
+    }
+
     async register(dto: RegisterDto) {
-        const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email } });
+        const existingUser = await this.userModel.findUnique({ where: { email: dto.email } });
         if (existingUser) {
             throw new ConflictException('Email is already registered');
         }
 
         const passwordHash = await bcrypt.hash(dto.password, 10);
 
-        const user = await this.prisma.user.create({
+        const user = await this.userModel.create({
             data: {
                 email: dto.email,
                 name: dto.name,
@@ -35,7 +39,7 @@ export class AuthService {
     }
 
     async login(dto: LoginDto) {
-        const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+        const user = await this.userModel.findUnique({ where: { email: dto.email } });
         if (!user) {
             throw new UnauthorizedException('Invalid email or password');
         }
@@ -48,11 +52,40 @@ export class AuthService {
         return this.buildAuthResponse(user.id, user.email, user.name ?? undefined);
     }
 
-    private buildAuthResponse(userId: string, email: string, name?: string) {
+    async refresh(userId: string) {
+        const user = await this.userModel.findUnique({ where: { id: userId } });
+        if (!user || !user.refreshToken) {
+            throw new UnauthorizedException('Invalid refresh token');
+        }
+
+        try {
+            this.jwtService.verify(user.refreshToken, {
+                secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+            });
+        } catch {
+            throw new UnauthorizedException('Refresh token expired');
+        }
+
+        return this.buildAuthResponse(user.id, user.email, user.name ?? undefined);
+    }
+
+    private async buildAuthResponse(userId: string, email: string, name?: string) {
         const payload: JwtPayload = { sub: userId, email };
 
-        const token = this.jwtService.sign(payload, {
+        const accessToken = this.jwtService.sign(payload, {
             secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+            expiresIn: '15m',
+        });
+
+        const refreshToken = this.jwtService.sign(payload, {
+            secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+            expiresIn: '7d',
+        });
+
+        // Store refresh token in database
+        await this.userModel.update({
+            where: { id: userId },
+            data: { refreshToken },
         });
 
         return {
@@ -61,7 +94,8 @@ export class AuthService {
                 email,
                 name,
             },
-            token,
+            accessToken,
+            refreshToken,
         };
     }
 }

@@ -11,6 +11,10 @@ export const AuthService = {
         return ApiService.post<RegisterPayload, AuthResponse>(ENDPOINTS.AUTH.REGISTER, credentials);
     },
 
+    refresh: async (): Promise<AuthResponse> => {
+        return ApiService.post<void, AuthResponse>(ENDPOINTS.AUTH.REFRESH);
+    },
+
     logout: async (): Promise<void> => {
         return ApiService.post(ENDPOINTS.AUTH.LOGOUT);
     }
