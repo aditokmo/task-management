@@ -1,6 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -12,46 +11,14 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useTaskUIStore } from '@/store';
+import {
+    CREATE_TASK_DEFAULT_VALUES,
+    priorityOptions,
+    statusOptions,
+} from '../constants';
 import { useCreateTask } from '../hooks';
-import { TASK_PRIORITY, TASK_STATUS, type TaskPriority, type TaskStatus } from '../types';
-
-const createTaskSchema = z.object({
-    title: z.string().min(3, 'Title must be at least 3 characters long'),
-    description: z.string().max(1000, 'Description is too long').optional(),
-    priority: z.enum([TASK_PRIORITY.LOW, TASK_PRIORITY.MEDIUM, TASK_PRIORITY.HIGH]),
-    status: z.enum([TASK_STATUS.BACKLOG, TASK_STATUS.TODO, TASK_STATUS.IN_PROGRESS, TASK_STATUS.DONE]),
-    dueDate: z.string().min(1, 'Due date is required'),
-    assigneeName: z.string().max(120, 'Assignee name is too long').optional(),
-});
-
-type CreateTaskFormValues = z.infer<typeof createTaskSchema>;
-
-const DEFAULT_VALUES: CreateTaskFormValues = {
-    title: '',
-    description: '',
-    priority: TASK_PRIORITY.MEDIUM,
-    status: TASK_STATUS.BACKLOG,
-    dueDate: '',
-    assigneeName: '',
-};
-
-const toISOString = (dateValue: string) => {
-    const parsed = new Date(dateValue);
-    return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
-};
-
-const priorityOptions: Array<{ value: TaskPriority; label: string }> = [
-    { value: TASK_PRIORITY.LOW, label: 'Low' },
-    { value: TASK_PRIORITY.MEDIUM, label: 'Medium' },
-    { value: TASK_PRIORITY.HIGH, label: 'High' },
-];
-
-const statusOptions: Array<{ value: TaskStatus; label: string }> = [
-    { value: TASK_STATUS.BACKLOG, label: 'Backlog' },
-    { value: TASK_STATUS.TODO, label: 'Todo' },
-    { value: TASK_STATUS.IN_PROGRESS, label: 'In-Progress' },
-    { value: TASK_STATUS.DONE, label: 'Done' },
-];
+import { createTaskSchema, type CreateTaskFormValues } from '../schemas';
+import { toISOStringSafe } from '../utils';
 
 export function NewTaskDialog() {
     const isOpen = useTaskUIStore((state) => state.isCreateDialogOpen);
@@ -65,7 +32,7 @@ export function NewTaskDialog() {
         formState: { errors },
     } = useForm<CreateTaskFormValues>({
         resolver: zodResolver(createTaskSchema),
-        defaultValues: DEFAULT_VALUES,
+        defaultValues: CREATE_TASK_DEFAULT_VALUES,
     });
 
     const onSubmit = handleSubmit(async (values) => {
@@ -74,12 +41,12 @@ export function NewTaskDialog() {
             ...(values.description ? { description: values.description } : {}),
             priority: values.priority,
             status: values.status,
-            dueDate: toISOString(values.dueDate),
+            dueDate: toISOStringSafe(values.dueDate),
             ...(values.assigneeName ? { assigneeName: values.assigneeName } : {}),
         };
         await createTask.mutateAsync(payload);
 
-        reset(DEFAULT_VALUES);
+        reset(CREATE_TASK_DEFAULT_VALUES);
         closeDialog();
     });
 
@@ -89,7 +56,7 @@ export function NewTaskDialog() {
             onOpenChange={(nextOpen) => {
                 if (!nextOpen) {
                     closeDialog();
-                    reset(DEFAULT_VALUES);
+                    reset(CREATE_TASK_DEFAULT_VALUES);
                 }
             }}
         >

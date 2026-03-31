@@ -11,21 +11,10 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import { useTaskUIStore } from '@/store';
+import { priorityOptions } from '../constants';
 import { useTasks, useUpdateTask } from '../hooks';
 import { TASK_PRIORITY, type TaskPriority } from '../types';
-
-const formatDateForInput = (value: string) => {
-    if (!value) {
-        return '';
-    }
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-        return '';
-    }
-
-    return date.toISOString().slice(0, 10);
-};
+import { formatDateForInput } from '../utils';
 
 export function TaskDetailSheet() {
     const isTaskDetailOpen = useTaskUIStore((state) => state.isTaskDetailOpen);
@@ -124,9 +113,11 @@ export function TaskDetailSheet() {
                                     onChange={(event) => setPriority(event.target.value as TaskPriority)}
                                     className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                                 >
-                                    <option value={TASK_PRIORITY.LOW}>Low</option>
-                                    <option value={TASK_PRIORITY.MEDIUM}>Medium</option>
-                                    <option value={TASK_PRIORITY.HIGH}>High</option>
+                                    {priorityOptions.map((option) => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
 

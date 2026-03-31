@@ -4,15 +4,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { LOGIN_DEFAULT_VALUES } from '../constants';
 import { Checkbox } from '@/components/ui/checkbox';
 import { loginSchema, type LoginFormValues } from '../schemas';
 import { useAuth } from '../hooks/useAuth';
-
-const defaultValues: LoginFormValues = {
-    email: '',
-    password: '',
-    rememberMe: false,
-};
 
 export function Login() {
     const { login, loginErrorMessage } = useAuth();
@@ -25,7 +20,7 @@ export function Login() {
         formState: { errors },
     } = useForm<LoginFormValues>({
         resolver: zodResolver(loginSchema),
-        defaultValues,
+        defaultValues: LOGIN_DEFAULT_VALUES,
     });
 
     const rememberMe = watch('rememberMe');

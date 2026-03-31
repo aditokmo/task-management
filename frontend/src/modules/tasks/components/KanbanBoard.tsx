@@ -3,25 +3,11 @@ import type { DropResult } from '@hello-pangea/dnd';
 import { DragDropContext } from '@hello-pangea/dnd';
 import gsap from 'gsap';
 import { useTaskUIStore } from '@/store';
+import { KANBAN_COLUMNS } from '../constants';
 import { useMoveTask, useTaskSocketSync, useTasks } from '../hooks';
 import { TASK_STATUS, type Task, type TaskStatus } from '../types';
+import { sortTasksByPosition } from '../utils';
 import { KanbanColumn } from './KanbanColumn';
-
-interface ColumnConfig {
-    status: TaskStatus;
-    title: string;
-}
-
-const COLUMNS: ColumnConfig[] = [
-    { status: TASK_STATUS.BACKLOG, title: 'Backlog' },
-    { status: TASK_STATUS.TODO, title: 'Todo' },
-    { status: TASK_STATUS.IN_PROGRESS, title: 'In-Progress' },
-    { status: TASK_STATUS.DONE, title: 'Done' },
-];
-
-const sortByPosition = (tasks: Task[]) => {
-    return [...tasks].sort((a, b) => a.position - b.position);
-};
 
 export function KanbanBoard() {
     const { data: tasks = [], isLoading } = useTasks();
@@ -52,8 +38,8 @@ export function KanbanBoard() {
     }, [tasks.length]);
 
     const groupedTasks = useMemo(() => {
-        return COLUMNS.reduce<Record<TaskStatus, Task[]>>((accumulator, column) => {
-            accumulator[column.status] = sortByPosition(tasks.filter((task) => task.status === column.status));
+        return KANBAN_COLUMNS.reduce<Record<TaskStatus, Task[]>>((accumulator, column) => {
+            accumulator[column.status] = sortTasksByPosition(tasks.filter((task) => task.status === column.status));
             return accumulator;
         }, {
             [TASK_STATUS.BACKLOG]: [],
@@ -93,7 +79,7 @@ export function KanbanBoard() {
         <div ref={boardRef}>
             <DragDropContext onDragEnd={onDragEnd}>
                 <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
-                    {COLUMNS.map((column) => (
+                    {KANBAN_COLUMNS.map((column) => (
                         <KanbanColumn
                             key={column.status}
                             status={column.status}

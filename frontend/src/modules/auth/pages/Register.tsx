@@ -4,15 +4,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { REGISTER_DEFAULT_VALUES } from '../constants';
 import { registerSchema, type RegisterFormValues } from '../schemas';
 import { useAuth } from '../hooks/useAuth';
-
-const defaultValues: RegisterFormValues = {
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-};
 
 export function Register() {
     const { register: registerMutation, registerErrorMessage } = useAuth();
@@ -23,7 +17,7 @@ export function Register() {
         formState: { errors },
     } = useForm<RegisterFormValues>({
         resolver: zodResolver(registerSchema),
-        defaultValues,
+        defaultValues: REGISTER_DEFAULT_VALUES,
     });
 
     const onSubmit = handleSubmit(async (values) => {

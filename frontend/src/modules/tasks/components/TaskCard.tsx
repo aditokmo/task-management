@@ -1,26 +1,13 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { priorityVariantMap } from '../constants';
 import type { Task } from '../types';
+import { formatTaskDueDate } from '../utils';
 
 interface TaskCardProps {
     task: Task;
     onClick: (taskId: string) => void;
 }
-
-const priorityVariantMap: Record<Task['priority'], 'outline' | 'secondary' | 'destructive'> = {
-    low: 'outline',
-    medium: 'secondary',
-    high: 'destructive',
-};
-
-const formatDueDate = (dueDate: string) => {
-    const date = new Date(dueDate);
-    if (Number.isNaN(date.getTime())) {
-        return 'No due date';
-    }
-
-    return date.toLocaleDateString();
-};
 
 export function TaskCard({ task, onClick }: TaskCardProps) {
     return (
@@ -35,7 +22,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
 
             <CardContent className="flex items-center justify-between gap-2 pb-1 text-xs text-muted-foreground">
                 <Badge variant={priorityVariantMap[task.priority]}>{task.priority.toUpperCase()}</Badge>
-                <span>{formatDueDate(task.dueDate)}</span>
+                <span>{formatTaskDueDate(task.dueDate)}</span>
             </CardContent>
         </Card>
     );
