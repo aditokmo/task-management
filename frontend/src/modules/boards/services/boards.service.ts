@@ -5,6 +5,7 @@ import type {
     CreateBoardPayload,
     ListBoardsResponse,
     OpenBoardPayload,
+    UpdateBoardPayload,
 } from '../types/board.types';
 import { ENDPOINTS } from './endpoint';
 
@@ -38,6 +39,14 @@ export const BoardsService = {
     open: async (payload: OpenBoardPayload): Promise<Board> => {
         const response = await ApiService.post<OpenBoardPayload, Board | BoardResponse>(
             ENDPOINTS.BOARDS.OPEN,
+            payload,
+        );
+        return normalizeBoard(response);
+    },
+
+    update: async (boardId: string, payload: UpdateBoardPayload): Promise<Board> => {
+        const response = await ApiService.patch<UpdateBoardPayload, Board | BoardResponse>(
+            ENDPOINTS.BOARDS.UPDATE(boardId),
             payload,
         );
         return normalizeBoard(response);

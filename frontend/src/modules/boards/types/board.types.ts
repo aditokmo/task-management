@@ -16,6 +16,11 @@ export interface CreateBoardPayload {
     memberEmails?: string[];
 }
 
+export interface UpdateBoardPayload {
+    name?: string;
+    memberEmails?: string[];
+}
+
 export interface BoardResponse {
     data: Board;
 }

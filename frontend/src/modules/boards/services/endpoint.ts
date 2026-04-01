@@ -4,5 +4,6 @@ export const ENDPOINTS = {
         CREATE: '/boards',
         OPEN: '/boards/open',
         BY_ID: (boardId: string) => `/boards/${boardId}`,
+        UPDATE: (boardId: string) => `/boards/${boardId}`,
     },
 } as const;

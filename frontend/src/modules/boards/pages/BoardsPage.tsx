@@ -1,5 +1,5 @@
 import { Outlet, useMatchRoute, useNavigate } from '@tanstack/react-router';
-import { FolderOpen, Plus, Trash2 } from 'lucide-react';
+import { FolderOpen, Plus, Settings, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,18 +12,24 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useBoards, useOpenBoard } from '../hooks';
+import { useBoards, useOpenBoard, useUpdateBoard } from '../hooks';
 
 export function BoardsPage() {
     const matchRoute = useMatchRoute();
     const navigate = useNavigate();
     const { data: boards = [], isLoading } = useBoards();
     const createBoard = useOpenBoard();
+    const updateBoard = useUpdateBoard();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [boardName, setBoardName] = useState('');
     const [memberEmails, setMemberEmails] = useState<string[]>(['']);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingBoardId, setEditingBoardId] = useState<string | null>(null);
+    const [editBoardName, setEditBoardName] = useState('');
+    const [editMemberEmails, setEditMemberEmails] = useState<string[]>(['']);
 
     const canSubmit = useMemo(() => boardName.trim().length >= 2, [boardName]);
+    const canEditSubmit = useMemo(() => editBoardName.trim().length >= 2, [editBoardName]);
 
     const addMemberInput = () => {
         setMemberEmails((previous) => [...previous, '']);
@@ -46,6 +52,59 @@ export function BoardsPage() {
     const resetCreateForm = () => {
         setBoardName('');
         setMemberEmails(['']);
+    };
+
+    const handleOpenEditModal = (event: React.MouseEvent, board: { id: string; name: string }) => {
+        event.stopPropagation();
+        setEditingBoardId(board.id);
+        setEditBoardName(board.name);
+        setEditMemberEmails(['']);
+        setIsEditModalOpen(true);
+    };
+
+    const resetEditForm = () => {
+        setEditingBoardId(null);
+        setEditBoardName('');
+        setEditMemberEmails(['']);
+    };
+
+    const addEditMemberInput = () => {
+        setEditMemberEmails((previous) => [...previous, '']);
+    };
+
+    const updateEditMemberEmail = (index: number, value: string) => {
+        setEditMemberEmails((previous) => previous.map((email, itemIndex) => (itemIndex === index ? value : email)));
+    };
+
+    const removeEditMemberEmail = (index: number) => {
+        setEditMemberEmails((previous) => {
+            if (previous.length === 1) {
+                return [''];
+            }
+            return previous.filter((_, itemIndex) => itemIndex !== index);
+        });
+    };
+
+    const handleEdit = async () => {
+        if (!editingBoardId) return;
+        const trimmed = editBoardName.trim();
+        if (!trimmed) return;
+
+        const normalizedEmails = Array.from(
+            new Set(
+                editMemberEmails
+                    .map((email) => email.trim().toLowerCase())
+                    .filter((email) => email.length > 0),
+            ),
+        );
+
+        await updateBoard.mutateAsync({
+            boardId: editingBoardId,
+            name: trimmed,
+            memberEmails: normalizedEmails,
+        });
+        resetEditForm();
+        setIsEditModalOpen(false);
     };
 
     const handleCreate = async () => {
@@ -114,8 +173,17 @@ export function BoardsPage() {
                         ) : (
                             boards.map((board) => (
                                 <Card key={board.id} className="cursor-pointer transition hover:bg-accent/40">
-                                    <CardHeader>
+                                    <CardHeader className="flex flex-row items-start justify-between space-y-0">
                                         <CardTitle className="text-base">{board.name}</CardTitle>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            className="-mt-1 -mr-1 shrink-0"
+                                            onClick={(event) => handleOpenEditModal(event, board)}
+                                            aria-label="Board settings"
+                                        >
+                                            <Settings className="size-4" />
+                                        </Button>
                                     </CardHeader>
                                     <CardContent className="flex items-center justify-between gap-3">
                                         <span className="text-xs text-muted-foreground">
@@ -134,6 +202,89 @@ export function BoardsPage() {
                         )}
                     </div>
                 </section>
+
+                <Dialog
+                    open={isEditModalOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            resetEditForm();
+                        }
+                        setIsEditModalOpen(open);
+                    }}
+                >
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Edit board</DialogTitle>
+                            <DialogDescription>
+                                Update the board name or add new members by email.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <p className="text-sm font-medium">Project name</p>
+                                <Input
+                                    value={editBoardName}
+                                    onChange={(event) => setEditBoardName(event.target.value)}
+                                    placeholder="Website redesign"
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter' && canEditSubmit && !updateBoard.isPending) {
+                                            handleEdit();
+                                        }
+                                    }}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between gap-3">
+                                    <p className="text-sm font-medium">Add members (emails)</p>
+                                    <Button type="button" variant="outline" size="sm" onClick={addEditMemberInput}>
+                                        <Plus className="size-4" />
+                                        Add email
+                                    </Button>
+                                </div>
+
+                                <div className="space-y-2">
+                                    {editMemberEmails.map((email, index) => (
+                                        <div key={`edit-member-email-${index}`} className="flex items-center gap-2">
+                                            <Input
+                                                type="email"
+                                                value={email}
+                                                onChange={(event) => updateEditMemberEmail(index, event.target.value)}
+                                                placeholder="teammate@example.com"
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon-sm"
+                                                onClick={() => removeEditMemberEmail(index)}
+                                                aria-label="Remove email field"
+                                            >
+                                                <Trash2 className="size-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                    resetEditForm();
+                                    setIsEditModalOpen(false);
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button type="button" onClick={handleEdit} disabled={!canEditSubmit || updateBoard.isPending}>
+                                {updateBoard.isPending ? 'Saving...' : 'Save changes'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
 
                 <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
                     <DialogContent>

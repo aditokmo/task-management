@@ -131,4 +131,35 @@ export class BoardsService {
 
         return board;
     }
+
+    async update(userId: string, boardId: string, dto: import('./dto/update-board.dto').UpdateBoardDto) {
+        const board = await this.boardModel.findFirst({
+            where: { id: boardId, ownerId: userId },
+        });
+
+        if (!board) {
+            throw new NotFoundException('Board not found or you do not have permission to edit it');
+        }
+
+        const data: Record<string, unknown> = {};
+
+        if (dto.name !== undefined) {
+            data['name'] = dto.name.trim();
+        }
+
+        if (dto.memberEmails !== undefined) {
+            const inviteeIds = await this.resolveInviteeIds(userId, dto.memberEmails);
+            if (inviteeIds.length) {
+                await this.boardMemberModel.createMany({
+                    data: inviteeIds.map((inviteeId: string) => ({ boardId, userId: inviteeId })),
+                    skipDuplicates: true,
+                });
+            }
+        }
+
+        return this.boardModel.update({
+            where: { id: boardId },
+            data,
+        });
+    }
 }

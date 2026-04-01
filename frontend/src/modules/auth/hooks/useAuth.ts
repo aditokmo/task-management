@@ -1,11 +1,12 @@
 import { getAPIErrorMessage } from "@/utils/api-error-handler";
 import { AuthService } from "../services"
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useAuthStore } from '@/store';
 
 export const useAuth = () => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const setAuth = useAuthStore((state) => state.setAuth);
     const setAccessToken = useAuthStore((state) => state.setAccessToken);
     const clearAuth = useAuthStore((state) => state.clearAuth);
@@ -19,6 +20,8 @@ export const useAuth = () => {
     const login = useMutation({
         mutationFn: AuthService.login,
         onSuccess: async (res) => {
+            queryClient.clear();
+
             if (res.user && res.accessToken) {
                 setAuth(toAuthUser(res.user), res.accessToken);
             }
@@ -34,6 +37,8 @@ export const useAuth = () => {
     const register = useMutation({
         mutationFn: AuthService.register,
         onSuccess: async (res) => {
+            queryClient.clear();
+
             if (res.user && res.accessToken) {
                 setAuth(toAuthUser(res.user), res.accessToken);
             }
@@ -55,6 +60,7 @@ export const useAuth = () => {
         },
         onError: (error) => {
             clearAuth();
+            queryClient.clear();
             const errorMessage = getAPIErrorMessage(error);
             console.error(errorMessage)
         },
@@ -64,6 +70,7 @@ export const useAuth = () => {
         mutationFn: AuthService.logout,
         onSuccess: async () => {
             clearAuth();
+            queryClient.clear();
             await navigate({ to: '/login' });
         },
         onError: (error) => {
