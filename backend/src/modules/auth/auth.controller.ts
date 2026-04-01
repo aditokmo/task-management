@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { JwtAuthGuard } from './jwt-auth.guard';
+import { JwtRefreshGuard } from './jwt-refresh.guard';
 import type { JwtPayload } from './types/jwt-payload.type';
 
 @Controller('api/v1/auth')
@@ -34,7 +34,7 @@ export class AuthController {
     }
 
     @Post('refresh')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtRefreshGuard)
     @HttpCode(200)
     async refreshToken(
         @Req() request: Request,
