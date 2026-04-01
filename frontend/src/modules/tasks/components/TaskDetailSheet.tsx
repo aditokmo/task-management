@@ -16,13 +16,17 @@ import { priorityOptions } from '../constants';
 import { useTasks, useUpdateTask } from '../hooks';
 import { getDefaultFormData, mapTaskToFormData } from '../utils';
 
-export function TaskDetailSheet() {
+interface TaskDetailSheetProps {
+    boardId: string;
+}
+
+export function TaskDetailSheet({ boardId }: TaskDetailSheetProps) {
     const isTaskDetailOpen = useTaskUIStore((state) => state.isTaskDetailOpen);
     const selectedTaskId = useTaskUIStore((state) => state.selectedTaskId);
     const closeTaskDetail = useTaskUIStore((state) => state.closeTaskDetail);
 
-    const { data: tasks = [] } = useTasks();
-    const updateTask = useUpdateTask();
+    const { data: tasks = [] } = useTasks(boardId);
+    const updateTask = useUpdateTask(boardId);
     const panelRef = useRef<HTMLDivElement | null>(null);
 
     const selectedTask = useMemo(() => {

@@ -19,8 +19,17 @@ const normalizeTask = (response: Task | TaskResponse): Task => {
 };
 
 export const TaskService = {
-    list: async (options?: AxiosRequestConfig): Promise<Task[]> => {
-        const response = await ApiService.get<Task[] | ListTasksResponse>(ENDPOINTS.TASKS.LIST, options);
+    list: async (boardId: string, options?: AxiosRequestConfig): Promise<Task[]> => {
+        const response = await ApiService.get<Task[] | ListTasksResponse>(
+            ENDPOINTS.TASKS.LIST,
+            {
+                ...options,
+                params: {
+                    ...(options?.params ?? {}),
+                    boardId,
+                },
+            },
+        );
         return normalizeTaskList(response);
     },
 

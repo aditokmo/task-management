@@ -1,6 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { KanbanDashboard } from '@/modules/tasks/pages';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_protected/')({
-    component: () => <KanbanDashboard />,
-})
+    beforeLoad: () => {
+        throw redirect({ to: '/boards' });
+    },
+});

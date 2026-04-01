@@ -23,7 +23,7 @@ export const useAuth = () => {
                 setAuth(toAuthUser(res.user), res.accessToken);
             }
 
-            await navigate({ to: '/' });
+            await navigate({ to: '/boards' });
         },
         onError: (error) => {
             const errorMessage = getAPIErrorMessage(error);
@@ -38,7 +38,7 @@ export const useAuth = () => {
                 setAuth(toAuthUser(res.user), res.accessToken);
             }
 
-            await navigate({ to: '/' });
+            await navigate({ to: '/boards' });
         },
         onError: (error) => {
             const errorMessage = getAPIErrorMessage(error);

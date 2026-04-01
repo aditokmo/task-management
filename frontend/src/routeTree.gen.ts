@@ -15,6 +15,8 @@ import { Route as ProtectedIndexRouteImport } from './routes/_protected/index'
 import { Route as PublicRegisterRouteImport } from './routes/_public/register'
 import { Route as PublicLoginRouteImport } from './routes/_public/login'
 import { Route as PublicForgotPasswordRouteImport } from './routes/_public/forgot-password'
+import { Route as ProtectedBoardsRouteImport } from './routes/_protected/boards'
+import { Route as ProtectedBoardsBoardIdRouteImport } from './routes/_protected/boards.$boardId'
 
 const PublicRoute = PublicRouteImport.update({
   id: '/_public',
@@ -44,41 +46,71 @@ const PublicForgotPasswordRoute = PublicForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => PublicRoute,
 } as any)
+const ProtectedBoardsRoute = ProtectedBoardsRouteImport.update({
+  id: '/boards',
+  path: '/boards',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedBoardsBoardIdRoute = ProtectedBoardsBoardIdRouteImport.update({
+  id: '/$boardId',
+  path: '/$boardId',
+  getParentRoute: () => ProtectedBoardsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof ProtectedIndexRoute
+  '/boards': typeof ProtectedBoardsRouteWithChildren
   '/forgot-password': typeof PublicForgotPasswordRoute
   '/login': typeof PublicLoginRoute
   '/register': typeof PublicRegisterRoute
+  '/boards/$boardId': typeof ProtectedBoardsBoardIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof ProtectedIndexRoute
+  '/boards': typeof ProtectedBoardsRouteWithChildren
   '/forgot-password': typeof PublicForgotPasswordRoute
   '/login': typeof PublicLoginRoute
   '/register': typeof PublicRegisterRoute
+  '/boards/$boardId': typeof ProtectedBoardsBoardIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_protected': typeof ProtectedRouteWithChildren
   '/_public': typeof PublicRouteWithChildren
+  '/_protected/boards': typeof ProtectedBoardsRouteWithChildren
   '/_public/forgot-password': typeof PublicForgotPasswordRoute
   '/_public/login': typeof PublicLoginRoute
   '/_public/register': typeof PublicRegisterRoute
   '/_protected/': typeof ProtectedIndexRoute
+  '/_protected/boards/$boardId': typeof ProtectedBoardsBoardIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/forgot-password' | '/login' | '/register'
+  fullPaths:
+    | '/'
+    | '/boards'
+    | '/forgot-password'
+    | '/login'
+    | '/register'
+    | '/boards/$boardId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/forgot-password' | '/login' | '/register'
+  to:
+    | '/'
+    | '/boards'
+    | '/forgot-password'
+    | '/login'
+    | '/register'
+    | '/boards/$boardId'
   id:
     | '__root__'
     | '/_protected'
     | '/_public'
+    | '/_protected/boards'
     | '/_public/forgot-password'
     | '/_public/login'
     | '/_public/register'
     | '/_protected/'
+    | '/_protected/boards/$boardId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -130,14 +162,42 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicForgotPasswordRouteImport
       parentRoute: typeof PublicRoute
     }
+    '/_protected/boards': {
+      id: '/_protected/boards'
+      path: '/boards'
+      fullPath: '/boards'
+      preLoaderRoute: typeof ProtectedBoardsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/boards/$boardId': {
+      id: '/_protected/boards/$boardId'
+      path: '/$boardId'
+      fullPath: '/boards/$boardId'
+      preLoaderRoute: typeof ProtectedBoardsBoardIdRouteImport
+      parentRoute: typeof ProtectedBoardsRoute
+    }
   }
 }
 
+interface ProtectedBoardsRouteChildren {
+  ProtectedBoardsBoardIdRoute: typeof ProtectedBoardsBoardIdRoute
+}
+
+const ProtectedBoardsRouteChildren: ProtectedBoardsRouteChildren = {
+  ProtectedBoardsBoardIdRoute: ProtectedBoardsBoardIdRoute,
+}
+
+const ProtectedBoardsRouteWithChildren = ProtectedBoardsRoute._addFileChildren(
+  ProtectedBoardsRouteChildren,
+)
+
 interface ProtectedRouteChildren {
+  ProtectedBoardsRoute: typeof ProtectedBoardsRouteWithChildren
   ProtectedIndexRoute: typeof ProtectedIndexRoute
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
+  ProtectedBoardsRoute: ProtectedBoardsRouteWithChildren,
   ProtectedIndexRoute: ProtectedIndexRoute,
 }
 

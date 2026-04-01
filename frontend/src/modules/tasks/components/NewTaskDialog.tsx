@@ -20,10 +20,14 @@ import { useCreateTask } from '../hooks';
 import { createTaskSchema, type CreateTaskFormValues } from '../schemas';
 import { toISOStringSafe } from '../utils';
 
-export function NewTaskDialog() {
+interface NewTaskDialogProps {
+    boardId: string;
+}
+
+export function NewTaskDialog({ boardId }: NewTaskDialogProps) {
     const isOpen = useTaskUIStore((state) => state.isCreateDialogOpen);
     const closeDialog = useTaskUIStore((state) => state.closeCreateDialog);
-    const createTask = useCreateTask();
+    const createTask = useCreateTask(boardId);
 
     const {
         register,

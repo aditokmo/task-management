@@ -22,6 +22,7 @@ export interface Task {
     priority: TaskPriority;
     status: TaskStatus;
     dueDate: string;
+    boardId: string;
     assigneeId?: string;
     assigneeName?: string;
     position: number;
@@ -39,6 +40,7 @@ export interface CreateTaskPayload {
     priority: TaskPriority;
     status: TaskStatus;
     dueDate: string;
+    boardId: string;
     assigneeId?: string;
     assigneeName?: string;
 }

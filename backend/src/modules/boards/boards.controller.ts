@@ -1,0 +1,32 @@
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { CurrentUser } from '../auth/current-user.decorator';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { JwtPayload } from '../auth/types/jwt-payload.type';
+import { BoardsService } from './boards.service';
+import { CreateBoardDto } from './dto/create-board.dto';
+
+@Controller('api/v1/boards')
+@UseGuards(JwtAuthGuard)
+export class BoardsController {
+    constructor(private readonly boardsService: BoardsService) { }
+
+    @Get()
+    list(@CurrentUser() user: JwtPayload) {
+        return this.boardsService.list(user.sub);
+    }
+
+    @Get(':boardId')
+    getById(@CurrentUser() user: JwtPayload, @Param('boardId') boardId: string) {
+        return this.boardsService.getById(user.sub, boardId);
+    }
+
+    @Post()
+    create(@CurrentUser() user: JwtPayload, @Body() dto: CreateBoardDto) {
+        return this.boardsService.create(user.sub, dto);
+    }
+
+    @Post('open')
+    open(@CurrentUser() user: JwtPayload, @Body() dto: CreateBoardDto) {
+        return this.boardsService.open(user.sub, dto);
+    }
+}

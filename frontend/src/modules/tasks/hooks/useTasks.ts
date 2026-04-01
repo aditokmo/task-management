@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { TaskService } from '../services';
 import type { CreateTaskPayload, MoveTaskPayload, Task, TaskStatus, UpdateTaskPayload } from '../types';
 
-export const TASKS_QUERY_KEY = ['tasks'] as const;
+export const getTasksQueryKey = (boardId: string) => ['tasks', boardId] as const;
 
 interface MoveTaskInput extends MoveTaskPayload {
     taskId: string;
@@ -86,22 +86,25 @@ const optimisticMove = (tasks: Task[], input: MoveTaskInput): Task[] => {
     return nextTasks;
 };
 
-export const useTasks = () => {
+export const useTasks = (boardId: string) => {
     return useQuery({
-        queryKey: TASKS_QUERY_KEY,
-        queryFn: TaskService.list,
+        queryKey: getTasksQueryKey(boardId),
+        queryFn: () => TaskService.list(boardId),
         staleTime: 10 * 1000,
+        enabled: Boolean(boardId),
     });
 };
 
-export const useCreateTask = () => {
+export const useCreateTask = (boardId: string) => {
     const queryClient = useQueryClient();
+    const queryKey = getTasksQueryKey(boardId);
 
     return useMutation({
-        mutationFn: (payload: CreateTaskPayload) => TaskService.create(payload),
+        mutationFn: (payload: Omit<CreateTaskPayload, 'boardId'>) =>
+            TaskService.create({ ...payload, boardId }),
         onMutate: async (payload) => {
-            await queryClient.cancelQueries({ queryKey: TASKS_QUERY_KEY });
-            const previousTasks = queryClient.getQueryData<Task[]>(TASKS_QUERY_KEY) ?? [];
+            await queryClient.cancelQueries({ queryKey });
+            const previousTasks = queryClient.getQueryData<Task[]>(queryKey) ?? [];
 
             const nextPosition = previousTasks.filter((task) => task.status === payload.status).length;
             const optimisticTask: Task = {
@@ -111,6 +114,7 @@ export const useCreateTask = () => {
                 priority: payload.priority,
                 status: payload.status,
                 dueDate: payload.dueDate,
+                boardId,
                 position: nextPosition,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
@@ -118,18 +122,18 @@ export const useCreateTask = () => {
                 ...(payload.assigneeName ? { assigneeName: payload.assigneeName } : {}),
             };
 
-            queryClient.setQueryData<Task[]>(TASKS_QUERY_KEY, [...previousTasks, optimisticTask]);
+            queryClient.setQueryData<Task[]>(queryKey, [...previousTasks, optimisticTask]);
 
             return { previousTasks, optimisticTaskId: optimisticTask.id };
         },
         onError: (_error, _payload, context) => {
             if (context?.previousTasks) {
-                queryClient.setQueryData(TASKS_QUERY_KEY, context.previousTasks);
+                queryClient.setQueryData(queryKey, context.previousTasks);
             }
             toast.error('Failed to create task');
         },
         onSuccess: (createdTask, _payload, context) => {
-            const currentTasks = queryClient.getQueryData<Task[]>(TASKS_QUERY_KEY) ?? [];
+            const currentTasks = queryClient.getQueryData<Task[]>(queryKey) ?? [];
             const withServerTask = currentTasks.map((task) => {
                 if (task.id === context?.optimisticTaskId) {
                     return createdTask;
@@ -138,23 +142,24 @@ export const useCreateTask = () => {
                 return task;
             });
 
-            queryClient.setQueryData(TASKS_QUERY_KEY, withServerTask);
+            queryClient.setQueryData<Task[]>(queryKey, withServerTask);
             toast.success('Task created successfully');
         },
         onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+            queryClient.invalidateQueries({ queryKey });
         },
     });
 };
 
-export const useUpdateTask = () => {
+export const useUpdateTask = (boardId: string) => {
     const queryClient = useQueryClient();
+    const queryKey = getTasksQueryKey(boardId);
 
     return useMutation({
         mutationFn: ({ taskId, payload }: UpdateTaskInput) => TaskService.update(taskId, payload),
         onMutate: async ({ taskId, payload }) => {
-            await queryClient.cancelQueries({ queryKey: TASKS_QUERY_KEY });
-            const previousTasks = queryClient.getQueryData<Task[]>(TASKS_QUERY_KEY) ?? [];
+            await queryClient.cancelQueries({ queryKey });
+            const previousTasks = queryClient.getQueryData<Task[]>(queryKey) ?? [];
 
             const nextTasks = previousTasks.map((task) => {
                 if (task.id !== taskId) {
@@ -168,59 +173,58 @@ export const useUpdateTask = () => {
                 };
             });
 
-            queryClient.setQueryData<Task[]>(TASKS_QUERY_KEY, nextTasks);
+            queryClient.setQueryData<Task[]>(queryKey, nextTasks);
 
             return { previousTasks };
         },
         onError: (_error, _payload, context) => {
             if (context?.previousTasks) {
-                queryClient.setQueryData(TASKS_QUERY_KEY, context.previousTasks);
+                queryClient.setQueryData(queryKey, context.previousTasks);
             }
             toast.error('Failed to update task');
         },
         onSuccess: (updatedTask) => {
-            console.log(12312)
-            const currentTasks = queryClient.getQueryData<Task[]>(TASKS_QUERY_KEY) ?? [];
+            const currentTasks = queryClient.getQueryData<Task[]>(queryKey) ?? [];
             const mergedTasks = currentTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task));
-            queryClient.setQueryData(TASKS_QUERY_KEY, mergedTasks);
+            queryClient.setQueryData(queryKey, mergedTasks);
             toast.success('Task updated successfully');
-            console.log('Task updated:', updatedTask);
         },
         onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+            queryClient.invalidateQueries({ queryKey });
         },
     });
 };
 
-export const useMoveTask = () => {
+export const useMoveTask = (boardId: string) => {
     const queryClient = useQueryClient();
+    const queryKey = getTasksQueryKey(boardId);
 
     return useMutation({
         mutationFn: ({ taskId, status, position }: MoveTaskInput) =>
             TaskService.move(taskId, { status, position }),
         onMutate: async (input) => {
-            await queryClient.cancelQueries({ queryKey: TASKS_QUERY_KEY });
-            const previousTasks = queryClient.getQueryData<Task[]>(TASKS_QUERY_KEY) ?? [];
+            await queryClient.cancelQueries({ queryKey });
+            const previousTasks = queryClient.getQueryData<Task[]>(queryKey) ?? [];
 
             const optimisticTasks = optimisticMove(previousTasks, input);
-            queryClient.setQueryData<Task[]>(TASKS_QUERY_KEY, optimisticTasks);
+            queryClient.setQueryData<Task[]>(queryKey, optimisticTasks);
 
             return { previousTasks };
         },
         onError: (_error, _input, context) => {
             if (context?.previousTasks) {
-                queryClient.setQueryData(TASKS_QUERY_KEY, context.previousTasks);
+                queryClient.setQueryData(queryKey, context.previousTasks);
             }
             toast.error('Failed to move task');
         },
         onSuccess: (serverTask) => {
-            const currentTasks = queryClient.getQueryData<Task[]>(TASKS_QUERY_KEY) ?? [];
+            const currentTasks = queryClient.getQueryData<Task[]>(queryKey) ?? [];
             const mergedTasks = currentTasks.map((task) => (task.id === serverTask.id ? serverTask : task));
             const normalizedSource = normalizeColumnPositions(mergedTasks, serverTask.status);
-            queryClient.setQueryData(TASKS_QUERY_KEY, normalizedSource);
+            queryClient.setQueryData(queryKey, normalizedSource);
         },
         onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+            queryClient.invalidateQueries({ queryKey });
         },
     });
 };

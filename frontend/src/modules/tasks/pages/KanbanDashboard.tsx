@@ -1,9 +1,15 @@
-import { Plus } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
+import { ChevronLeft, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTaskUIStore } from '@/store';
 import { KanbanBoard, NewTaskDialog, TaskDetailSheet } from '../components';
 
-export function KanbanDashboard() {
+interface KanbanDashboardProps {
+    boardId: string;
+    boardName: string;
+}
+
+export function KanbanDashboard({ boardId, boardName }: KanbanDashboardProps) {
     const openCreateDialog = useTaskUIStore((state) => state.openCreateDialog);
 
     return (
@@ -11,7 +17,14 @@ export function KanbanDashboard() {
             <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
                 <header className="flex flex-col gap-3 rounded-xl border bg-card/90 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h1 className="text-xl font-semibold tracking-tight">Task Management Dashboard</h1>
+                        <Link
+                            to="/boards"
+                            className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+                        >
+                            <ChevronLeft className="size-3.5" />
+                            Back to boards
+                        </Link>
+                        <h1 className="text-xl font-semibold tracking-tight">{boardName}</h1>
                         <p className="text-sm text-muted-foreground">
                             Drag tasks across board columns to track progress in real-time.
                         </p>
@@ -23,11 +36,11 @@ export function KanbanDashboard() {
                     </Button>
                 </header>
 
-                <KanbanBoard />
+                <KanbanBoard boardId={boardId} />
             </div>
 
-            <NewTaskDialog />
-            <TaskDetailSheet />
+            <NewTaskDialog boardId={boardId} />
+            <TaskDetailSheet boardId={boardId} />
         </main>
     );
 }

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
-import { TASKS_QUERY_KEY } from './useTasks';
+import { getTasksQueryKey } from './useTasks';
 import type { Task, TaskStatus } from '../types';
 
 interface TaskMovedEvent {
@@ -28,17 +28,26 @@ const resolveSocketUrl = () => {
     return apiUrl.replace(/\/api\/v\d+\/?$/, '');
 };
 
-export const useTaskSocketSync = () => {
+export const useTaskSocketSync = (boardId: string) => {
     const queryClient = useQueryClient();
 
     useEffect(() => {
+        if (!boardId) {
+            return;
+        }
+
+        const queryKey = getTasksQueryKey(boardId);
         const socket = io(resolveSocketUrl(), {
             withCredentials: true,
             transports: ['websocket'],
         });
 
         const updateTaskInCache = (incomingTask: Task) => {
-            queryClient.setQueryData<Task[]>(TASKS_QUERY_KEY, (currentTasks = []) => {
+            if (incomingTask.boardId !== boardId) {
+                return;
+            }
+
+            queryClient.setQueryData<Task[]>(queryKey, (currentTasks = []) => {
                 const taskExists = currentTasks.some((task) => task.id === incomingTask.id);
                 if (!taskExists) {
                     return [...currentTasks, incomingTask];
@@ -58,7 +67,7 @@ export const useTaskSocketSync = () => {
                 return;
             }
 
-            queryClient.setQueryData<Task[]>(TASKS_QUERY_KEY, (currentTasks = []) => {
+            queryClient.setQueryData<Task[]>(queryKey, (currentTasks = []) => {
                 return currentTasks.map((task) => {
                     if (task.id !== event.taskId) {
                         return task;
@@ -75,14 +84,18 @@ export const useTaskSocketSync = () => {
         });
 
         socket.on('task-created', (task: Task) => {
-            queryClient.setQueryData<Task[]>(TASKS_QUERY_KEY, (currentTasks = []) => {
+            if (task.boardId !== boardId) {
+                return;
+            }
+
+            queryClient.setQueryData<Task[]>(queryKey, (currentTasks = []) => {
                 const taskExists = currentTasks.some((item) => item.id === task.id);
                 return taskExists ? currentTasks : [...currentTasks, task];
             });
         });
 
         socket.on('task-deleted', (event: TaskDeletedEvent) => {
-            queryClient.setQueryData<Task[]>(TASKS_QUERY_KEY, (currentTasks = []) => {
+            queryClient.setQueryData<Task[]>(queryKey, (currentTasks = []) => {
                 return currentTasks.filter((task) => task.id !== event.taskId);
             });
         });
@@ -94,5 +107,5 @@ export const useTaskSocketSync = () => {
             socket.off('task-deleted');
             socket.disconnect();
         };
-    }, [queryClient]);
+    }, [boardId, queryClient]);
 };

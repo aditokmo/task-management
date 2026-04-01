@@ -6,7 +6,7 @@ export const Route = createFileRoute('/_public')({
         const isAuthenticated = useAuthStore.getState().isAuthenticated;
 
         if (isAuthenticated) {
-            throw redirect({ to: '/' });
+            throw redirect({ to: '/boards' });
         }
     },
     component: () => <Outlet />,

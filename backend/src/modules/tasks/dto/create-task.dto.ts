@@ -19,6 +19,9 @@ export class CreateTaskDto {
     @IsDateString()
     dueDate!: string;
 
+    @IsString()
+    boardId!: string;
+
     @IsOptional()
     @IsString()
     assigneeId?: string;

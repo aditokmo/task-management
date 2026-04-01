@@ -9,13 +9,17 @@ import { TASK_STATUS, type Task, type TaskStatus } from '../types';
 import { sortTasksByPosition } from '../utils';
 import { KanbanColumn } from './KanbanColumn';
 
-export function KanbanBoard() {
-    const { data: tasks = [], isLoading } = useTasks();
-    const moveTask = useMoveTask();
+interface KanbanBoardProps {
+    boardId: string;
+}
+
+export function KanbanBoard({ boardId }: KanbanBoardProps) {
+    const { data: tasks = [], isLoading } = useTasks(boardId);
+    const moveTask = useMoveTask(boardId);
     const openTaskDetail = useTaskUIStore((state) => state.openTaskDetail);
     const boardRef = useRef<HTMLDivElement | null>(null);
 
-    useTaskSocketSync();
+    useTaskSocketSync(boardId);
 
     useLayoutEffect(() => {
         if (!boardRef.current) {

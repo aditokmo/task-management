@@ -6,6 +6,7 @@ import {
     Param,
     Patch,
     Post,
+    Query,
     UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -22,35 +23,35 @@ export class TasksController {
     constructor(private readonly tasksService: TasksService) { }
 
     @Get()
-    list(@CurrentUser() _user: JwtPayload) {
-        return this.tasksService.list();
+    list(@CurrentUser() user: JwtPayload, @Query('boardId') boardId: string) {
+        return this.tasksService.list(user.sub, boardId);
     }
 
     @Post()
-    create(@CurrentUser() _user: JwtPayload, @Body() dto: CreateTaskDto) {
-        return this.tasksService.create(dto);
+    create(@CurrentUser() user: JwtPayload, @Body() dto: CreateTaskDto) {
+        return this.tasksService.create(user.sub, dto);
     }
 
     @Patch(':taskId')
     update(
-        @CurrentUser() _user: JwtPayload,
+        @CurrentUser() user: JwtPayload,
         @Param('taskId') taskId: string,
         @Body() dto: UpdateTaskDto,
     ) {
-        return this.tasksService.update(taskId, dto);
+        return this.tasksService.update(user.sub, taskId, dto);
     }
 
     @Patch(':taskId/move')
     move(
-        @CurrentUser() _user: JwtPayload,
+        @CurrentUser() user: JwtPayload,
         @Param('taskId') taskId: string,
         @Body() dto: MoveTaskDto,
     ) {
-        return this.tasksService.move(taskId, dto);
+        return this.tasksService.move(user.sub, taskId, dto);
     }
 
     @Delete(':taskId')
-    remove(@CurrentUser() _user: JwtPayload, @Param('taskId') taskId: string) {
-        return this.tasksService.remove(taskId);
+    remove(@CurrentUser() user: JwtPayload, @Param('taskId') taskId: string) {
+        return this.tasksService.remove(user.sub, taskId);
     }
 }
