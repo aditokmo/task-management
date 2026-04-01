@@ -70,3 +70,11 @@ export interface TaskResponse {
 export interface DeleteTaskResponse {
     success: boolean;
 }
+
+export interface TaskFormData {
+    title: string;
+    description: string;
+    assigneeName: string;
+    priority: TaskPriority;
+    dueDate: string;
+}

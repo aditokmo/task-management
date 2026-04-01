@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { TaskService } from '../services';
 import type { CreateTaskPayload, MoveTaskPayload, Task, TaskStatus, UpdateTaskPayload } from '../types';
 
@@ -125,6 +126,7 @@ export const useCreateTask = () => {
             if (context?.previousTasks) {
                 queryClient.setQueryData(TASKS_QUERY_KEY, context.previousTasks);
             }
+            toast.error('Failed to create task');
         },
         onSuccess: (createdTask, _payload, context) => {
             const currentTasks = queryClient.getQueryData<Task[]>(TASKS_QUERY_KEY) ?? [];
@@ -137,6 +139,7 @@ export const useCreateTask = () => {
             });
 
             queryClient.setQueryData(TASKS_QUERY_KEY, withServerTask);
+            toast.success('Task created successfully');
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
@@ -173,11 +176,15 @@ export const useUpdateTask = () => {
             if (context?.previousTasks) {
                 queryClient.setQueryData(TASKS_QUERY_KEY, context.previousTasks);
             }
+            toast.error('Failed to update task');
         },
         onSuccess: (updatedTask) => {
+            console.log(12312)
             const currentTasks = queryClient.getQueryData<Task[]>(TASKS_QUERY_KEY) ?? [];
             const mergedTasks = currentTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task));
             queryClient.setQueryData(TASKS_QUERY_KEY, mergedTasks);
+            toast.success('Task updated successfully');
+            console.log('Task updated:', updatedTask);
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
@@ -204,6 +211,7 @@ export const useMoveTask = () => {
             if (context?.previousTasks) {
                 queryClient.setQueryData(TASKS_QUERY_KEY, context.previousTasks);
             }
+            toast.error('Failed to move task');
         },
         onSuccess: (serverTask) => {
             const currentTasks = queryClient.getQueryData<Task[]>(TASKS_QUERY_KEY) ?? [];

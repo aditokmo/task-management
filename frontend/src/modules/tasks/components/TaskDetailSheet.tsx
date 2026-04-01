@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useForm } from 'react-hook-form';
 import gsap from 'gsap';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,8 +14,7 @@ import {
 import { useTaskUIStore } from '@/store';
 import { priorityOptions } from '../constants';
 import { useTasks, useUpdateTask } from '../hooks';
-import { TASK_PRIORITY, type TaskPriority } from '../types';
-import { formatDateForInput } from '../utils';
+import { getDefaultFormData, mapTaskToFormData } from '../utils';
 
 export function TaskDetailSheet() {
     const isTaskDetailOpen = useTaskUIStore((state) => state.isTaskDetailOpen);
@@ -29,25 +29,13 @@ export function TaskDetailSheet() {
         return tasks.find((task) => task.id === selectedTaskId) ?? null;
     }, [tasks, selectedTaskId]);
 
-    const [description, setDescription] = useState('');
-    const [assigneeName, setAssigneeName] = useState('');
-    const [priority, setPriority] = useState<TaskPriority>(TASK_PRIORITY.MEDIUM);
-    const [dueDate, setDueDate] = useState('');
+    const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm({
+        defaultValues: getDefaultFormData(),
+    });
 
     useEffect(() => {
-        if (!selectedTask) {
-            setDescription('');
-            setAssigneeName('');
-            setPriority(TASK_PRIORITY.MEDIUM);
-            setDueDate('');
-            return;
-        }
-
-        setDescription(selectedTask.description ?? '');
-        setAssigneeName(selectedTask.assigneeName ?? '');
-        setPriority(selectedTask.priority);
-        setDueDate(formatDateForInput(selectedTask.dueDate));
-    }, [selectedTask]);
+        reset(mapTaskToFormData(selectedTask));
+    }, [selectedTaskId, reset]);
 
     useLayoutEffect(() => {
         if (!isTaskDetailOpen || !panelRef.current) {
@@ -65,7 +53,7 @@ export function TaskDetailSheet() {
         };
     }, [isTaskDetailOpen, selectedTaskId]);
 
-    const onSave = async () => {
+    const onSave = handleSubmit(async (data) => {
         if (!selectedTask) {
             return;
         }
@@ -73,44 +61,48 @@ export function TaskDetailSheet() {
         await updateTask.mutateAsync({
             taskId: selectedTask.id,
             payload: {
-                description,
-                assigneeName,
-                priority,
-                dueDate: dueDate ? new Date(dueDate).toISOString() : selectedTask.dueDate,
+                title: data.title,
+                description: data.description,
+                assigneeName: data.assigneeName,
+                priority: data.priority,
+                dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : selectedTask.dueDate,
             },
         });
-    };
+    });
 
     return (
         <Sheet open={isTaskDetailOpen} onOpenChange={(open) => !open && closeTaskDetail()}>
             <SheetContent side="right" className="w-full sm:max-w-xl" ref={panelRef}>
                 <SheetHeader>
-                    <SheetTitle>{selectedTask?.title ?? 'Task Details'}</SheetTitle>
+                    <SheetTitle>Task Details</SheetTitle>
                     <SheetDescription>Update details and assignee information.</SheetDescription>
                 </SheetHeader>
 
                 {selectedTask ? (
                     <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
                         <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-muted-foreground">Title</label>
+                            <Input {...register('title')} />
+                        </div>
+
+                        <div className="space-y-1.5">
                             <label className="text-xs font-medium text-muted-foreground">Description</label>
                             <textarea
-                                value={description}
-                                onChange={(event) => setDescription(event.target.value)}
+                                {...register('description')}
                                 className="min-h-32 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                             />
                         </div>
 
                         <div className="space-y-1.5">
                             <label className="text-xs font-medium text-muted-foreground">Assignee</label>
-                            <Input value={assigneeName} onChange={(event) => setAssigneeName(event.target.value)} />
+                            <Input {...register('assigneeName')} />
                         </div>
 
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             <div className="space-y-1.5">
                                 <label className="text-xs font-medium text-muted-foreground">Priority</label>
                                 <select
-                                    value={priority}
-                                    onChange={(event) => setPriority(event.target.value as TaskPriority)}
+                                    {...register('priority')}
                                     className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                                 >
                                     {priorityOptions.map((option) => (
@@ -123,7 +115,7 @@ export function TaskDetailSheet() {
 
                             <div className="space-y-1.5">
                                 <label className="text-xs font-medium text-muted-foreground">Due date</label>
-                                <Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
+                                <Input type="date" {...register('dueDate')} />
                             </div>
                         </div>
                     </div>
@@ -135,8 +127,8 @@ export function TaskDetailSheet() {
                     <Button variant="outline" onClick={closeTaskDetail}>
                         Close
                     </Button>
-                    <Button onClick={onSave} disabled={!selectedTask || updateTask.isPending}>
-                        {updateTask.isPending ? 'Saving...' : 'Save Changes'}
+                    <Button onClick={onSave} disabled={!selectedTask || isSubmitting || updateTask.isPending}>
+                        {isSubmitting || updateTask.isPending ? 'Saving...' : 'Save Changes'}
                     </Button>
                 </SheetFooter>
             </SheetContent>
