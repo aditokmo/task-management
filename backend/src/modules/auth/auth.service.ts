@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import type { LoginDto } from './dto/login.dto';
 import type { RegisterDto } from './dto/register.dto';
 import type { JwtPayload } from './types/jwt-payload.type';
+import type { GoogleProfile } from './types/google-profile.type';
 
 @Injectable()
 export class AuthService {
@@ -40,7 +41,7 @@ export class AuthService {
 
     async login(dto: LoginDto) {
         const user = await this.userModel.findUnique({ where: { email: dto.email } });
-        if (!user) {
+        if (!user || !user.passwordHash) {
             throw new UnauthorizedException('Invalid email or password');
         }
 
@@ -48,6 +49,33 @@ export class AuthService {
         if (!isPasswordValid) {
             throw new UnauthorizedException('Invalid email or password');
         }
+
+        return this.buildAuthResponse(user.id, user.email, user.name ?? undefined);
+    }
+
+    async googleLogin(profile: GoogleProfile) {
+        const existingByGoogle = await this.userModel.findUnique({ where: { googleId: profile.googleId } });
+        if (existingByGoogle) {
+            return this.buildAuthResponse(existingByGoogle.id, existingByGoogle.email, existingByGoogle.name ?? undefined);
+        }
+
+        const existingByEmail = await this.userModel.findUnique({ where: { email: profile.email } });
+        if (existingByEmail) {
+            // Link Google account to existing email account
+            const updated = await this.userModel.update({
+                where: { id: existingByEmail.id },
+                data: { googleId: profile.googleId },
+            });
+            return this.buildAuthResponse(updated.id, updated.email, updated.name ?? undefined);
+        }
+
+        const user = await this.userModel.create({
+            data: {
+                email: profile.email,
+                name: profile.name,
+                googleId: profile.googleId,
+            },
+        });
 
         return this.buildAuthResponse(user.id, user.email, user.name ?? undefined);
     }

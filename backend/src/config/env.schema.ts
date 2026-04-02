@@ -10,6 +10,10 @@ export const envSchema = z.object({
     JWT_REFRESH_SECRET: z.string().min(10),
     JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
     CORS_ORIGIN: z.string().default('http://localhost:5173'),
+    GOOGLE_CLIENT_ID: z.string().min(1),
+    GOOGLE_CLIENT_SECRET: z.string().min(1),
+    GOOGLE_CALLBACK_URL: z.string().url(),
+    FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

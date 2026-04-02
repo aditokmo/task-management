@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as PublicRouteImport } from './routes/_public'
 import { Route as ProtectedRouteImport } from './routes/_protected'
 import { Route as ProtectedIndexRouteImport } from './routes/_protected/index'
+import { Route as OauthCallbackRouteImport } from './routes/oauth.callback'
 import { Route as PublicRegisterRouteImport } from './routes/_public/register'
 import { Route as PublicLoginRouteImport } from './routes/_public/login'
 import { Route as PublicForgotPasswordRouteImport } from './routes/_public/forgot-password'
@@ -30,6 +31,11 @@ const ProtectedIndexRoute = ProtectedIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ProtectedRoute,
+} as any)
+const OauthCallbackRoute = OauthCallbackRouteImport.update({
+  id: '/oauth/callback',
+  path: '/oauth/callback',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const PublicRegisterRoute = PublicRegisterRouteImport.update({
   id: '/register',
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof PublicForgotPasswordRoute
   '/login': typeof PublicLoginRoute
   '/register': typeof PublicRegisterRoute
+  '/oauth/callback': typeof OauthCallbackRoute
   '/boards/$boardId': typeof ProtectedBoardsBoardIdRoute
 }
 export interface FileRoutesByTo {
@@ -71,6 +78,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof PublicForgotPasswordRoute
   '/login': typeof PublicLoginRoute
   '/register': typeof PublicRegisterRoute
+  '/oauth/callback': typeof OauthCallbackRoute
   '/boards/$boardId': typeof ProtectedBoardsBoardIdRoute
 }
 export interface FileRoutesById {
@@ -81,6 +89,7 @@ export interface FileRoutesById {
   '/_public/forgot-password': typeof PublicForgotPasswordRoute
   '/_public/login': typeof PublicLoginRoute
   '/_public/register': typeof PublicRegisterRoute
+  '/oauth/callback': typeof OauthCallbackRoute
   '/_protected/': typeof ProtectedIndexRoute
   '/_protected/boards/$boardId': typeof ProtectedBoardsBoardIdRoute
 }
@@ -92,6 +101,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/register'
+    | '/oauth/callback'
     | '/boards/$boardId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/register'
+    | '/oauth/callback'
     | '/boards/$boardId'
   id:
     | '__root__'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/_public/forgot-password'
     | '/_public/login'
     | '/_public/register'
+    | '/oauth/callback'
     | '/_protected/'
     | '/_protected/boards/$boardId'
   fileRoutesById: FileRoutesById
@@ -116,6 +128,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   ProtectedRoute: typeof ProtectedRouteWithChildren
   PublicRoute: typeof PublicRouteWithChildren
+  OauthCallbackRoute: typeof OauthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -140,6 +153,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof ProtectedIndexRouteImport
       parentRoute: typeof ProtectedRoute
+    }
+    '/oauth/callback': {
+      id: '/oauth/callback'
+      path: '/oauth/callback'
+      fullPath: '/oauth/callback'
+      preLoaderRoute: typeof OauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_public/register': {
       id: '/_public/register'
@@ -223,6 +243,7 @@ const PublicRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   ProtectedRoute: ProtectedRouteWithChildren,
   PublicRoute: PublicRouteWithChildren,
+  OauthCallbackRoute: OauthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -5,6 +5,7 @@ export const ENDPOINTS = {
         LOGOUT: '/auth/logout',
         REFRESH: '/auth/refresh',
         FORGOT_PASSWORD: '/auth/forgot-password',
+        GOOGLE: '/auth/google',
     },
 } as const;
 

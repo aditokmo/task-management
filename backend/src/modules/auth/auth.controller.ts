@@ -1,14 +1,20 @@
-import { Body, Controller, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { AuthGuard } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtRefreshGuard } from './jwt-refresh.guard';
 import type { JwtPayload } from './types/jwt-payload.type';
+import type { GoogleProfile } from './types/google-profile.type';
 
 @Controller('api/v1/auth')
 export class AuthController {
-    constructor(private readonly authService: AuthService) { }
+    constructor(
+        private readonly authService: AuthService,
+        private readonly configService: ConfigService,
+    ) { }
 
     @Post('register')
     async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) response: Response) {
@@ -55,6 +61,29 @@ export class AuthController {
     logout(@Res({ passthrough: true }) response: Response) {
         response.clearCookie('refreshToken', { path: '/' });
         return { success: true };
+    }
+
+    @Get('google')
+    @UseGuards(AuthGuard('google'))
+    googleAuth() {
+        // Passport redirects to Google
+    }
+
+    @Get('google/callback')
+    @UseGuards(AuthGuard('google'))
+    async googleCallback(@Req() request: Request, @Res() response: Response) {
+        const profile = request.user as GoogleProfile;
+        const authResponse = await this.authService.googleLogin(profile);
+        this.setRefreshTokenCookie(response, authResponse.refreshToken);
+
+        const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+        const params = new URLSearchParams({
+            accessToken: authResponse.accessToken,
+            userId: authResponse.user.id,
+            email: authResponse.user.email,
+            ...(authResponse.user.name ? { name: authResponse.user.name } : {}),
+        });
+        response.redirect(`${frontendUrl}/oauth/callback?${params.toString()}`);
     }
 
     private setRefreshTokenCookie(response: Response, refreshToken: string) {
