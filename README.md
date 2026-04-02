@@ -5,6 +5,24 @@ Full-stack task management app with:
 - Backend: NestJS + Prisma + PostgreSQL + Redis + Socket.IO
 - Frontend: React + Vite + TanStack Router + React Query
 
+# Features
+- [x] Auth: Register, login, logout
+- [x] OAuth: Google sign-in
+- [x] Boards: Create, list, open, rename, delete boards.
+- [x] Collaboration: Invite members by email, accept/decline invites, remove members, member status tracking (pending/accepted).
+- [x] Tasks: Full CRUD, Kanban board, drag-and-drop, reorder/move.
+- [x] Real-time: WebSocket live sync for task created/updated/moved/deleted events.
+- [x] Notifications: Fetch notifications, unread counter, mark-as-read, invite-related notifications.
+- [ ] UI Improvements: Better UI for Navbar and another navbar on board page
+- [ ] Profile Settings: Add profile settings so user can change name, email and profile image
+- [ ] Member Display: Display members
+- [ ] Task Filtering: Show only tasks for selected members that are only assign to him
+- [ ] Board Customization: Add themes for boards
+- [ ] Dynamic Columns: Option to add your columns in boards because now its fixed
+- [ ] Appearance: Add dark theme
+- [ ] Auth Security: Add verification on auth
+- [ ] Advanced Task Options: Add more options on task (assign, labels, deadline, creator of task, description with rich text)
+
 ## Prerequisites
 
 Install these before starting:
