@@ -2,15 +2,31 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store';
 import { BoardsService } from '../services';
-import type { Board } from '../types/board.types';
+import type { Board, BoardMembersResponse } from '../types/board.types';
 
 interface CreateBoardInput {
     name: string;
     memberEmails?: string[];
 }
 
+interface ApiErrorLike {
+    response?: {
+        data?: {
+            message?: string;
+        };
+    };
+    message?: string;
+}
+
+const extractErrorMessage = (error: unknown, fallback: string) => {
+    const candidate = error as ApiErrorLike;
+    return candidate.response?.data?.message || candidate.message || fallback;
+};
+
 export const getBoardsQueryKey = (userId: string | undefined) => ['boards', userId ?? 'anonymous'] as const;
 export const getBoardQueryKey = (userId: string | undefined, boardId: string) => ['board', userId ?? 'anonymous', boardId] as const;
+export const getBoardMembersQueryKey = (userId: string | undefined, boardId: string) =>
+    ['board-members', userId ?? 'anonymous', boardId] as const;
 
 export const useBoards = () => {
     const userId = useAuthStore((state) => state.user?.id);
@@ -33,6 +49,16 @@ export const useBoard = (boardId: string) => {
     });
 };
 
+export const useBoardMembers = (boardId: string, enabled = true) => {
+    const userId = useAuthStore((state) => state.user?.id);
+
+    return useQuery({
+        queryKey: getBoardMembersQueryKey(userId, boardId),
+        queryFn: () => BoardsService.listMembers(boardId),
+        enabled: Boolean(userId && boardId && enabled),
+    });
+};
+
 export const useOpenBoard = () => {
     const queryClient = useQueryClient();
     const userId = useAuthStore((state) => state.user?.id);
@@ -45,15 +71,11 @@ export const useOpenBoard = () => {
             await queryClient.invalidateQueries({ queryKey: boardsQueryKey });
             queryClient.setQueryData<Board>(getBoardQueryKey(userId, board.id), board);
         },
-        onError: (error: any) => {
-            const message =
-                error?.response?.data?.message ||
-                error?.message ||
-                'Unable to create board';
+        onError: (error: unknown) => {
+            const message = extractErrorMessage(error, 'Unable to create board');
             toast.error(message);
             console.error('Board creation error:', {
-                status: error?.response?.status,
-                data: error?.response?.data,
+                data: (error as ApiErrorLike)?.response?.data,
                 message: message,
                 fullError: error,
             });
@@ -85,11 +107,60 @@ export const useUpdateBoard = () => {
             await queryClient.invalidateQueries({ queryKey: boardsQueryKey });
             queryClient.setQueryData<Board>(getBoardQueryKey(userId, board.id), board);
         },
-        onError: (error: any) => {
-            const message =
-                error?.response?.data?.message ||
-                error?.message ||
-                'Unable to update board';
+        onError: (error: unknown) => {
+            const message = extractErrorMessage(error, 'Unable to update board');
+            toast.error(message);
+        },
+    });
+};
+
+interface AddBoardMembersInput {
+    boardId: string;
+    memberEmails: string[];
+}
+
+export const useAddBoardMembers = () => {
+    const queryClient = useQueryClient();
+    const userId = useAuthStore((state) => state.user?.id);
+    const boardsQueryKey = getBoardsQueryKey(userId);
+
+    return useMutation({
+        mutationFn: ({ boardId, memberEmails }: AddBoardMembersInput) =>
+            BoardsService.addMembers(boardId, { memberEmails }),
+        onSuccess: async (members: BoardMembersResponse) => {
+            toast.success('Members added successfully');
+            await queryClient.invalidateQueries({ queryKey: boardsQueryKey });
+            queryClient.setQueryData(getBoardMembersQueryKey(userId, members.boardId), members);
+        },
+        onError: (error: unknown) => {
+            const message = extractErrorMessage(error, 'Unable to add members');
+            toast.error(message);
+        },
+    });
+};
+
+interface RemoveBoardMemberInput {
+    boardId: string;
+    memberUserId: string;
+}
+
+export const useRemoveBoardMember = () => {
+    const queryClient = useQueryClient();
+    const userId = useAuthStore((state) => state.user?.id);
+    const boardsQueryKey = getBoardsQueryKey(userId);
+
+    return useMutation({
+        mutationFn: ({ boardId, memberUserId }: RemoveBoardMemberInput) =>
+            BoardsService.removeMember(boardId, memberUserId),
+        onSuccess: async (_, variables) => {
+            toast.success('Member removed from board');
+            await queryClient.invalidateQueries({ queryKey: boardsQueryKey });
+            await queryClient.invalidateQueries({
+                queryKey: getBoardMembersQueryKey(userId, variables.boardId),
+            });
+        },
+        onError: (error: unknown) => {
+            const message = extractErrorMessage(error, 'Unable to remove member');
             toast.error(message);
         },
     });
@@ -106,11 +177,8 @@ export const useDeleteBoard = () => {
             toast.success('Board deleted successfully');
             await queryClient.invalidateQueries({ queryKey: boardsQueryKey });
         },
-        onError: (error: any) => {
-            const message =
-                error?.response?.data?.message ||
-                error?.message ||
-                'Unable to delete board';
+        onError: (error: unknown) => {
+            const message = extractErrorMessage(error, 'Unable to delete board');
             toast.error(message);
         },
     });

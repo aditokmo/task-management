@@ -39,4 +39,4 @@ import { TasksModule } from './modules/tasks/tasks.module';
   controllers: [],
   providers: [],
 })
-export class AppModule { }
+export class AppModule {}

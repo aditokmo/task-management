@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -10,120 +14,143 @@ import type { GoogleProfile } from './types/google-profile.type';
 
 @Injectable()
 export class AuthService {
-    constructor(
-        private readonly prisma: PrismaService,
-        private readonly jwtService: JwtService,
-        private readonly configService: ConfigService,
-    ) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {}
 
-    private get userModel() {
-        return (this.prisma as any).user;
+  private get userModel() {
+    return (this.prisma as any).user;
+  }
+
+  async register(dto: RegisterDto) {
+    const existingUser = await this.userModel.findUnique({
+      where: { email: dto.email },
+    });
+    if (existingUser) {
+      throw new ConflictException('Email is already registered');
     }
 
-    async register(dto: RegisterDto) {
-        const existingUser = await this.userModel.findUnique({ where: { email: dto.email } });
-        if (existingUser) {
-            throw new ConflictException('Email is already registered');
-        }
+    const passwordHash = await bcrypt.hash(dto.password, 10);
 
-        const passwordHash = await bcrypt.hash(dto.password, 10);
+    const user = await this.userModel.create({
+      data: {
+        email: dto.email,
+        name: dto.name,
+        passwordHash,
+      },
+    });
 
-        const user = await this.userModel.create({
-            data: {
-                email: dto.email,
-                name: dto.name,
-                passwordHash,
-            },
-        });
+    return this.buildAuthResponse(user.id, user.email, user.name ?? undefined);
+  }
 
-        return this.buildAuthResponse(user.id, user.email, user.name ?? undefined);
+  async login(dto: LoginDto) {
+    const user = await this.userModel.findUnique({
+      where: { email: dto.email },
+    });
+    if (!user || !user.passwordHash) {
+      throw new UnauthorizedException('Invalid email or password');
     }
 
-    async login(dto: LoginDto) {
-        const user = await this.userModel.findUnique({ where: { email: dto.email } });
-        if (!user || !user.passwordHash) {
-            throw new UnauthorizedException('Invalid email or password');
-        }
-
-        const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
-        if (!isPasswordValid) {
-            throw new UnauthorizedException('Invalid email or password');
-        }
-
-        return this.buildAuthResponse(user.id, user.email, user.name ?? undefined);
+    const isPasswordValid = await bcrypt.compare(
+      dto.password,
+      user.passwordHash,
+    );
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid email or password');
     }
 
-    async googleLogin(profile: GoogleProfile) {
-        const existingByGoogle = await this.userModel.findUnique({ where: { googleId: profile.googleId } });
-        if (existingByGoogle) {
-            return this.buildAuthResponse(existingByGoogle.id, existingByGoogle.email, existingByGoogle.name ?? undefined);
-        }
+    return this.buildAuthResponse(user.id, user.email, user.name ?? undefined);
+  }
 
-        const existingByEmail = await this.userModel.findUnique({ where: { email: profile.email } });
-        if (existingByEmail) {
-            // Link Google account to existing email account
-            const updated = await this.userModel.update({
-                where: { id: existingByEmail.id },
-                data: { googleId: profile.googleId },
-            });
-            return this.buildAuthResponse(updated.id, updated.email, updated.name ?? undefined);
-        }
-
-        const user = await this.userModel.create({
-            data: {
-                email: profile.email,
-                name: profile.name,
-                googleId: profile.googleId,
-            },
-        });
-
-        return this.buildAuthResponse(user.id, user.email, user.name ?? undefined);
+  async googleLogin(profile: GoogleProfile) {
+    const existingByGoogle = await this.userModel.findUnique({
+      where: { googleId: profile.googleId },
+    });
+    if (existingByGoogle) {
+      return this.buildAuthResponse(
+        existingByGoogle.id,
+        existingByGoogle.email,
+        existingByGoogle.name ?? undefined,
+      );
     }
 
-    async refresh(userId: string) {
-        const user = await this.userModel.findUnique({ where: { id: userId } });
-        if (!user || !user.refreshToken) {
-            throw new UnauthorizedException('Invalid refresh token');
-        }
-
-        try {
-            this.jwtService.verify(user.refreshToken, {
-                secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-            });
-        } catch {
-            throw new UnauthorizedException('Refresh token expired');
-        }
-
-        return this.buildAuthResponse(user.id, user.email, user.name ?? undefined);
+    const existingByEmail = await this.userModel.findUnique({
+      where: { email: profile.email },
+    });
+    if (existingByEmail) {
+      // Link Google account to existing email account
+      const updated = await this.userModel.update({
+        where: { id: existingByEmail.id },
+        data: { googleId: profile.googleId },
+      });
+      return this.buildAuthResponse(
+        updated.id,
+        updated.email,
+        updated.name ?? undefined,
+      );
     }
 
-    private async buildAuthResponse(userId: string, email: string, name?: string) {
-        const payload: JwtPayload = { sub: userId, email };
+    const user = await this.userModel.create({
+      data: {
+        email: profile.email,
+        name: profile.name,
+        googleId: profile.googleId,
+      },
+    });
 
-        const accessToken = this.jwtService.sign(payload, {
-            secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
-            expiresIn: '15m',
-        });
+    return this.buildAuthResponse(user.id, user.email, user.name ?? undefined);
+  }
 
-        const refreshToken = this.jwtService.sign(payload, {
-            secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-            expiresIn: '7d',
-        });
-
-        // Store refresh token in database
-        await this.userModel.update({
-            where: { id: userId },
-            data: { refreshToken },
-        });
-
-        return {
-            user: {
-                id: userId,
-                email,
-                name,
-            },
-            accessToken,
-            refreshToken,
-        };
+  async refresh(userId: string) {
+    const user = await this.userModel.findUnique({ where: { id: userId } });
+    if (!user || !user.refreshToken) {
+      throw new UnauthorizedException('Invalid refresh token');
     }
+
+    try {
+      this.jwtService.verify(user.refreshToken, {
+        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      });
+    } catch {
+      throw new UnauthorizedException('Refresh token expired');
+    }
+
+    return this.buildAuthResponse(user.id, user.email, user.name ?? undefined);
+  }
+
+  private async buildAuthResponse(
+    userId: string,
+    email: string,
+    name?: string,
+  ) {
+    const payload: JwtPayload = { sub: userId, email };
+
+    const accessToken = this.jwtService.sign(payload, {
+      secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+      expiresIn: '15m',
+    });
+
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      expiresIn: '7d',
+    });
+
+    // Store refresh token in database
+    await this.userModel.update({
+      where: { id: userId },
+      data: { refreshToken },
+    });
+
+    return {
+      user: {
+        id: userId,
+        email,
+        name,
+      },
+      accessToken,
+      refreshToken,
+    };
+  }
 }

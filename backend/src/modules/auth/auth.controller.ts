@@ -1,4 +1,13 @@
-import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
@@ -11,88 +20,94 @@ import type { GoogleProfile } from './types/google-profile.type';
 
 @Controller('api/v1/auth')
 export class AuthController {
-    constructor(
-        private readonly authService: AuthService,
-        private readonly configService: ConfigService,
-    ) { }
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
-    @Post('register')
-    async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) response: Response) {
-        const authResponse = await this.authService.register(dto);
-        this.setRefreshTokenCookie(response, authResponse.refreshToken);
+  @Post('register')
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const authResponse = await this.authService.register(dto);
+    this.setRefreshTokenCookie(response, authResponse.refreshToken);
 
-        return {
-            user: authResponse.user,
-            accessToken: authResponse.accessToken,
-        };
-    }
+    return {
+      user: authResponse.user,
+      accessToken: authResponse.accessToken,
+    };
+  }
 
-    @Post('login')
-    @HttpCode(200)
-    async login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) {
-        const authResponse = await this.authService.login(dto);
-        this.setRefreshTokenCookie(response, authResponse.refreshToken);
+  @Post('login')
+  @HttpCode(200)
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const authResponse = await this.authService.login(dto);
+    this.setRefreshTokenCookie(response, authResponse.refreshToken);
 
-        return {
-            user: authResponse.user,
-            accessToken: authResponse.accessToken,
-        };
-    }
+    return {
+      user: authResponse.user,
+      accessToken: authResponse.accessToken,
+    };
+  }
 
-    @Post('refresh')
-    @UseGuards(JwtRefreshGuard)
-    @HttpCode(200)
-    async refreshToken(
-        @Req() request: Request,
-        @Res({ passthrough: true }) response: Response,
-    ) {
-        const payload = request.user as JwtPayload;
-        const authResponse = await this.authService.refresh(payload.sub);
-        this.setRefreshTokenCookie(response, authResponse.refreshToken);
+  @Post('refresh')
+  @UseGuards(JwtRefreshGuard)
+  @HttpCode(200)
+  async refreshToken(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const payload = request.user as JwtPayload;
+    const authResponse = await this.authService.refresh(payload.sub);
+    this.setRefreshTokenCookie(response, authResponse.refreshToken);
 
-        return {
-            user: authResponse.user,
-            accessToken: authResponse.accessToken,
-        };
-    }
+    return {
+      user: authResponse.user,
+      accessToken: authResponse.accessToken,
+    };
+  }
 
-    @Post('logout')
-    @HttpCode(200)
-    logout(@Res({ passthrough: true }) response: Response) {
-        response.clearCookie('refreshToken', { path: '/' });
-        return { success: true };
-    }
+  @Post('logout')
+  @HttpCode(200)
+  logout(@Res({ passthrough: true }) response: Response) {
+    response.clearCookie('refreshToken', { path: '/' });
+    return { success: true };
+  }
 
-    @Get('google')
-    @UseGuards(AuthGuard('google'))
-    googleAuth() {
-        // Passport redirects to Google
-    }
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  googleAuth() {
+    // Passport redirects to Google
+  }
 
-    @Get('google/callback')
-    @UseGuards(AuthGuard('google'))
-    async googleCallback(@Req() request: Request, @Res() response: Response) {
-        const profile = request.user as GoogleProfile;
-        const authResponse = await this.authService.googleLogin(profile);
-        this.setRefreshTokenCookie(response, authResponse.refreshToken);
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleCallback(@Req() request: Request, @Res() response: Response) {
+    const profile = request.user as GoogleProfile;
+    const authResponse = await this.authService.googleLogin(profile);
+    this.setRefreshTokenCookie(response, authResponse.refreshToken);
 
-        const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
-        const params = new URLSearchParams({
-            accessToken: authResponse.accessToken,
-            userId: authResponse.user.id,
-            email: authResponse.user.email,
-            ...(authResponse.user.name ? { name: authResponse.user.name } : {}),
-        });
-        response.redirect(`${frontendUrl}/oauth/callback?${params.toString()}`);
-    }
+    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+    const params = new URLSearchParams({
+      accessToken: authResponse.accessToken,
+      userId: authResponse.user.id,
+      email: authResponse.user.email,
+      ...(authResponse.user.name ? { name: authResponse.user.name } : {}),
+    });
+    response.redirect(`${frontendUrl}/oauth/callback?${params.toString()}`);
+  }
 
-    private setRefreshTokenCookie(response: Response, refreshToken: string) {
-        response.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            sameSite: 'lax',
-            secure: false,
-            path: '/',
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
-    }
+  private setRefreshTokenCookie(response: Response, refreshToken: string) {
+    response.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: false,
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+  }
 }

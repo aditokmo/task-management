@@ -1,6 +1,8 @@
 import { ApiService } from '@/api';
 import type {
+    AddBoardMembersPayload,
     Board,
+    BoardMembersResponse,
     BoardResponse,
     CreateBoardPayload,
     ListBoardsResponse,
@@ -54,5 +56,20 @@ export const BoardsService = {
 
     delete: async (boardId: string): Promise<void> => {
         await ApiService.delete<void>(ENDPOINTS.BOARDS.DELETE(boardId));
+    },
+
+    listMembers: async (boardId: string): Promise<BoardMembersResponse> => {
+        return ApiService.get<BoardMembersResponse>(ENDPOINTS.BOARDS.MEMBERS(boardId));
+    },
+
+    addMembers: async (boardId: string, payload: AddBoardMembersPayload): Promise<BoardMembersResponse> => {
+        return ApiService.post<AddBoardMembersPayload, BoardMembersResponse>(
+            ENDPOINTS.BOARDS.MEMBERS(boardId),
+            payload,
+        );
+    },
+
+    removeMember: async (boardId: string, memberUserId: string): Promise<void> => {
+        await ApiService.delete<void>(ENDPOINTS.BOARDS.REMOVE_MEMBER(boardId, memberUserId));
     },
 };

@@ -1,32 +1,38 @@
 import { TaskPriority, TaskStatus } from '@prisma/client';
-import { IsDateString, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsDateString,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 export class CreateTaskDto {
-    @IsString()
-    @MinLength(3)
-    title!: string;
+  @IsString()
+  @MinLength(3)
+  title!: string;
 
-    @IsOptional()
-    @IsString()
-    description?: string;
+  @IsOptional()
+  @IsString()
+  description?: string;
 
-    @IsEnum(TaskPriority)
-    priority!: TaskPriority;
+  @IsEnum(TaskPriority)
+  priority!: TaskPriority;
 
-    @IsEnum(TaskStatus)
-    status!: TaskStatus;
+  @IsEnum(TaskStatus)
+  status!: TaskStatus;
 
-    @IsDateString()
-    dueDate!: string;
+  @IsDateString()
+  dueDate!: string;
 
-    @IsString()
-    boardId!: string;
+  @IsString()
+  boardId!: string;
 
-    @IsOptional()
-    @IsString()
-    assigneeId?: string;
+  @IsOptional()
+  @IsString()
+  assigneeId?: string;
 
-    @IsOptional()
-    @IsString()
-    assigneeName?: string;
+  @IsOptional()
+  @IsString()
+  assigneeName?: string;
 }

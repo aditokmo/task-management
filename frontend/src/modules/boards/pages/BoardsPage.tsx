@@ -1,5 +1,5 @@
 import { Outlet, useMatchRoute, useNavigate } from '@tanstack/react-router';
-import { FolderOpen, Plus, Settings, Trash2, Edit2 } from 'lucide-react';
+import { Edit2, FolderOpen, Plus, Settings, Trash2, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,27 +18,104 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { useBoards, useOpenBoard, useUpdateBoard, useDeleteBoard } from '../hooks';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useAuthStore } from '@/store';
+import { useAddBoardMembers, useBoardMembers, useBoards, useDeleteBoard, useOpenBoard, useRemoveBoardMember, useUpdateBoard } from '../hooks';
+
+const normalizeEmails = (emails: string[]) =>
+    emails
+        .map((email) => email.trim().toLowerCase())
+        .filter((email) => email.length > 0);
+
+const getDuplicateEmails = (emails: string[]) => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+
+    for (const email of emails) {
+        if (seen.has(email)) {
+            duplicates.add(email);
+            continue;
+        }
+        seen.add(email);
+    }
+
+    return Array.from(duplicates);
+};
 
 export function BoardsPage() {
     const matchRoute = useMatchRoute();
     const navigate = useNavigate();
+    const currentUserId = useAuthStore((state) => state.user?.id);
+    const currentUserEmail = useAuthStore((state) => state.user?.email?.toLowerCase() ?? '');
     const { data: boards = [], isLoading } = useBoards();
     const createBoard = useOpenBoard();
     const updateBoard = useUpdateBoard();
+    const addBoardMembers = useAddBoardMembers();
+    const removeBoardMember = useRemoveBoardMember();
     const deleteBoard = useDeleteBoard();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [boardName, setBoardName] = useState('');
     const [memberEmails, setMemberEmails] = useState<string[]>(['']);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
     const [editingBoardId, setEditingBoardId] = useState<string | null>(null);
     const [editBoardName, setEditBoardName] = useState('');
     const [editMemberEmails, setEditMemberEmails] = useState<string[]>(['']);
+    const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [boardToDelete, setBoardToDelete] = useState<{ id: string; name: string } | null>(null);
 
-    const canSubmit = useMemo(() => boardName.trim().length >= 2, [boardName]);
-    const canEditSubmit = useMemo(() => editBoardName.trim().length >= 2, [editBoardName]);
+    const editingBoard = useMemo(
+        () => boards.find((board) => board.id === editingBoardId) ?? null,
+        [boards, editingBoardId],
+    );
+    const canManageEditingBoard = Boolean(editingBoard && editingBoard.ownerId === currentUserId);
+
+    const boardMembers = useBoardMembers(
+        editingBoardId ?? '',
+        isEditModalOpen && Boolean(editingBoardId) && canManageEditingBoard,
+    );
+
+    const normalizedMemberEmails = useMemo(() => normalizeEmails(memberEmails), [memberEmails]);
+    const duplicateCreateEmails = useMemo(() => getDuplicateEmails(normalizedMemberEmails), [normalizedMemberEmails]);
+    const createIncludesOwnerEmail = useMemo(
+        () => Boolean(currentUserEmail && normalizedMemberEmails.includes(currentUserEmail)),
+        [currentUserEmail, normalizedMemberEmails],
+    );
+
+    const normalizedEditEmails = useMemo(() => normalizeEmails(editMemberEmails), [editMemberEmails]);
+    const duplicateEditEmails = useMemo(() => getDuplicateEmails(normalizedEditEmails), [normalizedEditEmails]);
+    const editIncludesOwnerEmail = useMemo(
+        () => Boolean(currentUserEmail && normalizedEditEmails.includes(currentUserEmail)),
+        [currentUserEmail, normalizedEditEmails],
+    );
+    const existingMemberEmails = useMemo(
+        () =>
+            new Set(
+                (boardMembers.data?.members ?? [])
+                    .filter((member) => member.role === 'member')
+                    .map((member) => member.email.toLowerCase()),
+            ),
+        [boardMembers.data?.members],
+    );
+    const alreadyAddedEmails = useMemo(
+        () => Array.from(new Set(normalizedEditEmails.filter((email) => existingMemberEmails.has(email)))),
+        [existingMemberEmails, normalizedEditEmails],
+    );
+
+    const isSavingEdit = updateBoard.isPending || addBoardMembers.isPending;
+    const canSubmit = useMemo(
+        () => boardName.trim().length >= 2 && duplicateCreateEmails.length === 0 && !createIncludesOwnerEmail,
+        [boardName, createIncludesOwnerEmail, duplicateCreateEmails.length],
+    );
+    const canEditSubmit = useMemo(
+        () =>
+            editBoardName.trim().length >= 2 &&
+            duplicateEditEmails.length === 0 &&
+            !editIncludesOwnerEmail &&
+            alreadyAddedEmails.length === 0,
+        [editBoardName, duplicateEditEmails.length, editIncludesOwnerEmail, alreadyAddedEmails.length],
+    );
 
     const addMemberInput = () => {
         setMemberEmails((previous) => [...previous, '']);
@@ -68,6 +145,7 @@ export function BoardsPage() {
         setEditingBoardId(board.id);
         setEditBoardName(board.name);
         setEditMemberEmails(['']);
+        setIsMembersModalOpen(false);
         setIsEditModalOpen(true);
     };
 
@@ -75,6 +153,8 @@ export function BoardsPage() {
         setEditingBoardId(null);
         setEditBoardName('');
         setEditMemberEmails(['']);
+        setRemovingMemberId(null);
+        setIsMembersModalOpen(false);
     };
 
     const addEditMemberInput = () => {
@@ -95,23 +175,24 @@ export function BoardsPage() {
     };
 
     const handleEdit = async () => {
-        if (!editingBoardId) return;
+        if (!editingBoardId || !canManageEditingBoard) return;
         const trimmed = editBoardName.trim();
         if (!trimmed) return;
 
-        const normalizedEmails = Array.from(
-            new Set(
-                editMemberEmails
-                    .map((email) => email.trim().toLowerCase())
-                    .filter((email) => email.length > 0),
-            ),
-        );
+        if (editingBoard && trimmed !== editingBoard.name.trim()) {
+            await updateBoard.mutateAsync({
+                boardId: editingBoardId,
+                name: trimmed,
+            });
+        }
 
-        await updateBoard.mutateAsync({
-            boardId: editingBoardId,
-            name: trimmed,
-            memberEmails: normalizedEmails,
-        });
+        if (normalizedEditEmails.length) {
+            await addBoardMembers.mutateAsync({
+                boardId: editingBoardId,
+                memberEmails: normalizedEditEmails,
+            });
+        }
+
         resetEditForm();
         setIsEditModalOpen(false);
     };
@@ -122,20 +203,28 @@ export function BoardsPage() {
             return;
         }
 
-        const normalizedEmails = Array.from(
-            new Set(
-                memberEmails
-                    .map((email) => email.trim().toLowerCase())
-                    .filter((email) => email.length > 0),
-            ),
-        );
-
         await createBoard.mutateAsync({
             name: trimmed,
-            memberEmails: normalizedEmails,
+            memberEmails: normalizedMemberEmails,
         });
         resetCreateForm();
         setIsCreateModalOpen(false);
+    };
+
+    const handleRemoveMember = async (memberUserId: string) => {
+        if (!editingBoardId) {
+            return;
+        }
+
+        setRemovingMemberId(memberUserId);
+        try {
+            await removeBoardMember.mutateAsync({
+                boardId: editingBoardId,
+                memberUserId,
+            });
+        } finally {
+            setRemovingMemberId(null);
+        }
     };
 
     const handleOpenBoard = async (boardId: string) => {
@@ -194,34 +283,38 @@ export function BoardsPage() {
                             </Card>
                         ) : (
                             boards.map((board) => (
-                                <Card key={board.id} className="cursor-pointer transition hover:bg-accent/40">
+                                <Card key={board.id} className="cursor-pointer transition">
                                     <CardHeader className="flex flex-row items-start justify-between space-y-0">
                                         <CardTitle className="text-base">{board.name}</CardTitle>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon-sm"
-                                                    className="-mt-1 -mr-1 shrink-0"
-                                                    aria-label="Board settings"
-                                                >
-                                                    <Settings className="size-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={(event) => handleOpenEditModal(event as any, board)}>
-                                                    <Edit2 className="size-4" />
-                                                    Edit
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    variant="destructive"
-                                                    onClick={(event) => handleDeleteClick(event as any, board)}
-                                                >
-                                                    <Trash2 className="size-4" />
-                                                    Delete
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
+                                        {board.ownerId === currentUserId ? (
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon-sm"
+                                                        className="-mt-1 -mr-1 shrink-0"
+                                                        aria-label="Board settings"
+                                                    >
+                                                        <Settings className="size-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={(event) => handleOpenEditModal(event, board)}>
+                                                        <Edit2 className="size-4" />
+                                                        Edit
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        variant="destructive"
+                                                        onClick={(event) => handleDeleteClick(event, board)}
+                                                    >
+                                                        <Trash2 className="size-4" />
+                                                        Delete
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        ) : (
+                                            <span className="inline-block h-8 w-8" aria-hidden="true" />
+                                        )}
                                     </CardHeader>
                                     <CardContent className="flex items-center justify-between gap-3">
                                         <span className="text-xs text-muted-foreground">
@@ -254,19 +347,26 @@ export function BoardsPage() {
                         <DialogHeader>
                             <DialogTitle>Edit board</DialogTitle>
                             <DialogDescription>
-                                Update the board name or add new members by email.
+                                Update the board name, add members, or open the members list to remove users.
                             </DialogDescription>
                         </DialogHeader>
 
                         <div className="space-y-4">
+                            {!canManageEditingBoard ? (
+                                <p className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                                    Only the board owner can edit members.
+                                </p>
+                            ) : null}
+
                             <div className="space-y-2">
                                 <p className="text-sm font-medium">Project name</p>
                                 <Input
                                     value={editBoardName}
                                     onChange={(event) => setEditBoardName(event.target.value)}
                                     placeholder="Website redesign"
+                                    disabled={!canManageEditingBoard}
                                     onKeyDown={(event) => {
-                                        if (event.key === 'Enter' && canEditSubmit && !updateBoard.isPending) {
+                                        if (event.key === 'Enter' && canEditSubmit && !isSavingEdit && canManageEditingBoard) {
                                             handleEdit();
                                         }
                                     }}
@@ -276,10 +376,28 @@ export function BoardsPage() {
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between gap-3">
                                     <p className="text-sm font-medium">Add members (emails)</p>
-                                    <Button type="button" variant="outline" size="sm" onClick={addEditMemberInput}>
-                                        <Plus className="size-4" />
-                                        Add email
-                                    </Button>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => setIsMembersModalOpen(true)}
+                                            disabled={!canManageEditingBoard}
+                                        >
+                                            <Users className="size-4" />
+                                            Members
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={addEditMemberInput}
+                                            disabled={!canManageEditingBoard}
+                                        >
+                                            <Plus className="size-4" />
+                                            Add email
+                                        </Button>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">
@@ -290,6 +408,7 @@ export function BoardsPage() {
                                                 value={email}
                                                 onChange={(event) => updateEditMemberEmail(index, event.target.value)}
                                                 placeholder="teammate@example.com"
+                                                disabled={!canManageEditingBoard}
                                             />
                                             <Button
                                                 type="button"
@@ -297,12 +416,31 @@ export function BoardsPage() {
                                                 size="icon-sm"
                                                 onClick={() => removeEditMemberEmail(index)}
                                                 aria-label="Remove email field"
+                                                disabled={!canManageEditingBoard}
                                             >
                                                 <Trash2 className="size-4" />
                                             </Button>
                                         </div>
                                     ))}
                                 </div>
+
+                                {duplicateEditEmails.length > 0 ? (
+                                    <p className="text-sm text-destructive">
+                                        You already entered this email: {duplicateEditEmails.join(', ')}.
+                                    </p>
+                                ) : null}
+
+                                {editIncludesOwnerEmail ? (
+                                    <p className="text-sm text-destructive">
+                                        You cannot add yourself. You are already the board owner.
+                                    </p>
+                                ) : null}
+
+                                {alreadyAddedEmails.length > 0 ? (
+                                    <p className="text-sm text-destructive">
+                                        This email is already in the board: {alreadyAddedEmails.join(', ')}.
+                                    </p>
+                                ) : null}
                             </div>
                         </div>
 
@@ -317,10 +455,67 @@ export function BoardsPage() {
                             >
                                 Cancel
                             </Button>
-                            <Button type="button" onClick={handleEdit} disabled={!canEditSubmit || updateBoard.isPending}>
-                                {updateBoard.isPending ? 'Saving...' : 'Save changes'}
+                            <Button type="button" onClick={handleEdit} disabled={!canEditSubmit || isSavingEdit || !canManageEditingBoard}>
+                                {isSavingEdit ? 'Saving...' : 'Save changes'}
                             </Button>
                         </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                <Dialog open={isMembersModalOpen} onOpenChange={setIsMembersModalOpen}>
+                    <DialogContent className="sm:max-w-xl">
+                        <DialogHeader>
+                            <DialogTitle>Board members</DialogTitle>
+                            <DialogDescription>
+                                View everyone in this board and remove members when needed.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        {boardMembers.isLoading ? (
+                            <p className="text-sm text-muted-foreground">Loading members...</p>
+                        ) : boardMembers.data ? (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>Email</TableHead>
+                                        <TableHead>Role</TableHead>
+                                        <TableHead className="text-right">Action</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {boardMembers.data.members.map((member) => {
+                                        const isRemoving = removeBoardMember.isPending && removingMemberId === member.id;
+                                        const isOwner = member.role === 'owner';
+
+                                        return (
+                                            <TableRow key={member.id}>
+                                                <TableCell>{member.name || 'Unnamed user'}</TableCell>
+                                                <TableCell>{member.email}</TableCell>
+                                                <TableCell className="capitalize">{member.role}</TableCell>
+                                                <TableCell className="text-right">
+                                                    {isOwner ? (
+                                                        <span className="text-xs text-muted-foreground">Cannot remove owner</span>
+                                                    ) : (
+                                                        <Button
+                                                            type="button"
+                                                            variant="destructive"
+                                                            size="sm"
+                                                            onClick={() => handleRemoveMember(member.id)}
+                                                            disabled={removeBoardMember.isPending}
+                                                        >
+                                                            {isRemoving ? 'Removing...' : 'Remove'}
+                                                        </Button>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        ) : (
+                            <p className="text-sm text-muted-foreground">Unable to load members.</p>
+                        )}
                     </DialogContent>
                 </Dialog>
 
@@ -378,6 +573,18 @@ export function BoardsPage() {
                                         </div>
                                     ))}
                                 </div>
+
+                                {duplicateCreateEmails.length > 0 ? (
+                                    <p className="text-sm text-destructive">
+                                        You already entered this email: {duplicateCreateEmails.join(', ')}.
+                                    </p>
+                                ) : null}
+
+                                {createIncludesOwnerEmail ? (
+                                    <p className="text-sm text-destructive">
+                                        You cannot add yourself. You are already the board owner.
+                                    </p>
+                                ) : null}
                             </div>
                         </div>
 

@@ -21,6 +21,22 @@ export interface UpdateBoardPayload {
     memberEmails?: string[];
 }
 
+export interface BoardMember {
+    id: string;
+    email: string;
+    name: string | null;
+    role: 'owner' | 'member';
+}
+
+export interface BoardMembersResponse {
+    boardId: string;
+    members: BoardMember[];
+}
+
+export interface AddBoardMembersPayload {
+    memberEmails: string[];
+}
+
 export interface BoardResponse {
     data: Board;
 }
