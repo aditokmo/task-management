@@ -1,5 +1,5 @@
 import { Outlet, useMatchRoute, useNavigate } from '@tanstack/react-router';
-import { FolderOpen, Plus, Settings, Trash2 } from 'lucide-react';
+import { FolderOpen, Plus, Settings, Trash2, Edit2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,8 +11,14 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { useBoards, useOpenBoard, useUpdateBoard } from '../hooks';
+import { useBoards, useOpenBoard, useUpdateBoard, useDeleteBoard } from '../hooks';
 
 export function BoardsPage() {
     const matchRoute = useMatchRoute();
@@ -20,6 +26,7 @@ export function BoardsPage() {
     const { data: boards = [], isLoading } = useBoards();
     const createBoard = useOpenBoard();
     const updateBoard = useUpdateBoard();
+    const deleteBoard = useDeleteBoard();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [boardName, setBoardName] = useState('');
     const [memberEmails, setMemberEmails] = useState<string[]>(['']);
@@ -27,6 +34,8 @@ export function BoardsPage() {
     const [editingBoardId, setEditingBoardId] = useState<string | null>(null);
     const [editBoardName, setEditBoardName] = useState('');
     const [editMemberEmails, setEditMemberEmails] = useState<string[]>(['']);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [boardToDelete, setBoardToDelete] = useState<{ id: string; name: string } | null>(null);
 
     const canSubmit = useMemo(() => boardName.trim().length >= 2, [boardName]);
     const canEditSubmit = useMemo(() => editBoardName.trim().length >= 2, [editBoardName]);
@@ -133,6 +142,19 @@ export function BoardsPage() {
         await navigate({ to: '/boards/$boardId', params: { boardId } });
     };
 
+    const handleDeleteClick = (event: React.MouseEvent, board: { id: string; name: string }) => {
+        event.stopPropagation();
+        setBoardToDelete(board);
+        setIsDeleteConfirmOpen(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!boardToDelete) return;
+        await deleteBoard.mutateAsync(boardToDelete.id);
+        setIsDeleteConfirmOpen(false);
+        setBoardToDelete(null);
+    };
+
     const isBoardDetailRoute = Boolean(matchRoute({ to: '/boards/$boardId' }));
 
     if (isBoardDetailRoute) {
@@ -175,15 +197,31 @@ export function BoardsPage() {
                                 <Card key={board.id} className="cursor-pointer transition hover:bg-accent/40">
                                     <CardHeader className="flex flex-row items-start justify-between space-y-0">
                                         <CardTitle className="text-base">{board.name}</CardTitle>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon-sm"
-                                            className="-mt-1 -mr-1 shrink-0"
-                                            onClick={(event) => handleOpenEditModal(event, board)}
-                                            aria-label="Board settings"
-                                        >
-                                            <Settings className="size-4" />
-                                        </Button>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon-sm"
+                                                    className="-mt-1 -mr-1 shrink-0"
+                                                    aria-label="Board settings"
+                                                >
+                                                    <Settings className="size-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={(event) => handleOpenEditModal(event as any, board)}>
+                                                    <Edit2 className="size-4" />
+                                                    Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    variant="destructive"
+                                                    onClick={(event) => handleDeleteClick(event as any, board)}
+                                                >
+                                                    <Trash2 className="size-4" />
+                                                    Delete
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </CardHeader>
                                     <CardContent className="flex items-center justify-between gap-3">
                                         <span className="text-xs text-muted-foreground">
@@ -356,6 +394,35 @@ export function BoardsPage() {
                             </Button>
                             <Button type="button" onClick={handleCreate} disabled={!canSubmit || createBoard.isPending}>
                                 {createBoard.isPending ? 'Creating...' : 'Create board'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Delete board</DialogTitle>
+                            <DialogDescription>
+                                Are you sure you want to delete "{boardToDelete?.name}"? This action cannot be undone.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsDeleteConfirmOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                onClick={handleConfirmDelete}
+                                disabled={deleteBoard.isPending}
+                            >
+                                {deleteBoard.isPending ? 'Deleting...' : 'Delete'}
                             </Button>
                         </DialogFooter>
                     </DialogContent>

@@ -94,3 +94,24 @@ export const useUpdateBoard = () => {
         },
     });
 };
+
+export const useDeleteBoard = () => {
+    const queryClient = useQueryClient();
+    const userId = useAuthStore((state) => state.user?.id);
+    const boardsQueryKey = getBoardsQueryKey(userId);
+
+    return useMutation({
+        mutationFn: (boardId: string) => BoardsService.delete(boardId),
+        onSuccess: async () => {
+            toast.success('Board deleted successfully');
+            await queryClient.invalidateQueries({ queryKey: boardsQueryKey });
+        },
+        onError: (error: any) => {
+            const message =
+                error?.response?.data?.message ||
+                error?.message ||
+                'Unable to delete board';
+            toast.error(message);
+        },
+    });
+};

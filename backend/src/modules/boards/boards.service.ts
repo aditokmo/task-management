@@ -162,4 +162,22 @@ export class BoardsService {
             data,
         });
     }
+
+    async delete(userId: string, boardId: string) {
+        const board = await this.boardModel.findFirst({
+            where: { id: boardId, ownerId: userId },
+        });
+
+        if (!board) {
+            throw new NotFoundException('Board not found or you do not have permission to delete it');
+        }
+
+        await this.boardMemberModel.deleteMany({
+            where: { boardId },
+        });
+
+        return this.boardModel.delete({
+            where: { id: boardId },
+        });
+    }
 }

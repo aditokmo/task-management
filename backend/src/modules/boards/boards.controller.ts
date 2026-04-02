@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { JwtPayload } from '../auth/types/jwt-payload.type';
@@ -38,5 +38,10 @@ export class BoardsController {
         @Body() dto: UpdateBoardDto,
     ) {
         return this.boardsService.update(user.sub, boardId, dto);
+    }
+
+    @Delete(':boardId')
+    delete(@CurrentUser() user: JwtPayload, @Param('boardId') boardId: string) {
+        return this.boardsService.delete(user.sub, boardId);
     }
 }

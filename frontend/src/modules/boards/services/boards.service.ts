@@ -51,4 +51,8 @@ export const BoardsService = {
         );
         return normalizeBoard(response);
     },
+
+    delete: async (boardId: string): Promise<void> => {
+        await ApiService.delete<void>(ENDPOINTS.BOARDS.DELETE(boardId));
+    },
 };
