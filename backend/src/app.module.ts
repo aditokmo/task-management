@@ -4,6 +4,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { envSchema } from './config/env.schema';
 import { AuthModule } from './modules/auth/auth.module';
 import { BoardsModule } from './modules/boards/boards.module';
+import { MailModule } from './modules/mail/mail.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
@@ -32,6 +34,8 @@ import { TasksModule } from './modules/tasks/tasks.module';
     PrismaModule,
     RedisModule,
     RealtimeModule,
+    MailModule,
+    NotificationsModule,
     AuthModule,
     BoardsModule,
     TasksModule,

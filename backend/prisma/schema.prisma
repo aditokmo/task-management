@@ -20,6 +20,17 @@ enum TaskPriority {
   high
 }
 
+enum BoardInviteStatus {
+  pending
+  accepted
+  declined
+}
+
+enum NotificationType {
+  board_invite
+  board_invite_accepted
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -33,6 +44,9 @@ model User {
   tasks  Task[]
   boards Board[]
   boardMemberships BoardMember[]
+  sentBoardInvites BoardMember[] @relation("BoardInviteSender")
+  notifications Notification[]
+  notificationActors Notification[] @relation("NotificationActor")
 }
 
 model Board {
@@ -45,6 +59,7 @@ model Board {
   owner User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   tasks Task[]
   members BoardMember[]
+  notifications Notification[]
 
   @@unique([ownerId, name])
   @@index([ownerId, updatedAt])
@@ -54,13 +69,40 @@ model BoardMember {
   id        String   @id @default(cuid())
   boardId   String
   userId    String
+  invitedById String?
+  status    BoardInviteStatus @default(accepted)
   createdAt DateTime @default(now())
+  respondedAt DateTime?
 
   board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy User? @relation("BoardInviteSender", fields: [invitedById], references: [id], onDelete: SetNull)
+  notifications Notification[]
 
   @@unique([boardId, userId])
-  @@index([userId])
+  @@index([userId, status])
+  @@index([invitedById])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  actorId   String?
+  boardId   String?
+  boardMemberId String?
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actor User? @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  board Board? @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardMember BoardMember? @relation(fields: [boardMemberId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isRead, createdAt])
+  @@index([boardMemberId])
 }
 
 model Task {

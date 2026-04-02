@@ -72,4 +72,16 @@ export const BoardsService = {
     removeMember: async (boardId: string, memberUserId: string): Promise<void> => {
         await ApiService.delete<void>(ENDPOINTS.BOARDS.REMOVE_MEMBER(boardId, memberUserId));
     },
+
+    acceptInvite: async (inviteId: string): Promise<{ success: boolean }> => {
+        return ApiService.post<undefined, { success: boolean }>(
+            ENDPOINTS.BOARDS.ACCEPT_INVITE(inviteId),
+        );
+    },
+
+    declineInvite: async (inviteId: string): Promise<{ success: boolean }> => {
+        return ApiService.post<undefined, { success: boolean }>(
+            ENDPOINTS.BOARDS.DECLINE_INVITE(inviteId),
+        );
+    },
 };

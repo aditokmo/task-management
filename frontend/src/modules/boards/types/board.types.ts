@@ -26,6 +26,7 @@ export interface BoardMember {
     email: string;
     name: string | null;
     role: 'owner' | 'member';
+    status: 'pending' | 'accepted' | 'declined';
 }
 
 export interface BoardMembersResponse {
@@ -35,6 +36,10 @@ export interface BoardMembersResponse {
 
 export interface AddBoardMembersPayload {
     memberEmails: string[];
+}
+
+export interface InviteActionPayload {
+    inviteId: string;
 }
 
 export interface BoardResponse {

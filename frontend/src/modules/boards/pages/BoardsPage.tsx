@@ -93,7 +93,7 @@ export function BoardsPage() {
         () =>
             new Set(
                 (boardMembers.data?.members ?? [])
-                    .filter((member) => member.role === 'member')
+                    .filter((member) => member.role === 'member' && member.status !== 'declined')
                     .map((member) => member.email.toLowerCase()),
             ),
         [boardMembers.data?.members],
@@ -480,6 +480,7 @@ export function BoardsPage() {
                                         <TableHead>Name</TableHead>
                                         <TableHead>Email</TableHead>
                                         <TableHead>Role</TableHead>
+                                        <TableHead>Status</TableHead>
                                         <TableHead className="text-right">Action</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -493,6 +494,7 @@ export function BoardsPage() {
                                                 <TableCell>{member.name || 'Unnamed user'}</TableCell>
                                                 <TableCell>{member.email}</TableCell>
                                                 <TableCell className="capitalize">{member.role}</TableCell>
+                                                <TableCell className="capitalize">{member.status}</TableCell>
                                                 <TableCell className="text-right">
                                                     {isOwner ? (
                                                         <span className="text-xs text-muted-foreground">Cannot remove owner</span>

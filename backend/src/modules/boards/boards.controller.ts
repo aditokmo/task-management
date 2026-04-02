@@ -67,6 +67,22 @@ export class BoardsController {
     return this.boardsService.addMembers(user.sub, boardId, dto);
   }
 
+  @Post('invites/:inviteId/accept')
+  acceptInvite(
+    @CurrentUser() user: JwtPayload,
+    @Param('inviteId') inviteId: string,
+  ) {
+    return this.boardsService.acceptInvite(user.sub, inviteId);
+  }
+
+  @Post('invites/:inviteId/decline')
+  declineInvite(
+    @CurrentUser() user: JwtPayload,
+    @Param('inviteId') inviteId: string,
+  ) {
+    return this.boardsService.declineInvite(user.sub, inviteId);
+  }
+
   @Delete(':boardId/members/:memberUserId')
   removeMember(
     @CurrentUser() user: JwtPayload,
