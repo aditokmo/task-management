@@ -6,6 +6,7 @@ Full-stack task management app with:
 - Frontend: React + Vite + TanStack Router + React Query
 
 # Features
+
 - [x] Auth: Register, login, logout
 - [x] OAuth: Google sign-in
 - [x] Boards: Create, list, open, rename, delete boards.
@@ -14,8 +15,8 @@ Full-stack task management app with:
 - [x] Real-time: WebSocket live sync for task created/updated/moved/deleted events.
 - [x] Notifications: Fetch notifications, unread counter, mark-as-read, invite-related notifications.
 - [x] Profile Settings: Add profile settings so user can change name, email and profile image
-- [ ] Member Display: Display members
-- [ ] Task Filtering: Show only tasks for selected members that are only assign to him
+- [x] Member Display: Display members
+- [x] Task Filtering: Show only tasks for selected members that are only assign to him
 - [ ] Board Customization: Add themes for boards
 - [ ] Dynamic Columns: Option to add your columns in boards because now its fixed
 - [ ] Appearance: Add dark theme
