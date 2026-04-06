@@ -2,6 +2,7 @@ export interface AuthUser {
     id: string;
     email: string;
     name?: string;
+    profileImage?: string;
 }
 
 export interface LoginPayload {

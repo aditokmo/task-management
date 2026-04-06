@@ -16,6 +16,7 @@ import { Route as OauthCallbackRouteImport } from './routes/oauth.callback'
 import { Route as PublicRegisterRouteImport } from './routes/_public/register'
 import { Route as PublicLoginRouteImport } from './routes/_public/login'
 import { Route as PublicForgotPasswordRouteImport } from './routes/_public/forgot-password'
+import { Route as ProtectedProfileRouteImport } from './routes/_protected/profile'
 import { Route as ProtectedBoardsRouteImport } from './routes/_protected/boards'
 import { Route as ProtectedBoardsBoardIdRouteImport } from './routes/_protected/boards.$boardId'
 
@@ -52,6 +53,11 @@ const PublicForgotPasswordRoute = PublicForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => PublicRoute,
 } as any)
+const ProtectedProfileRoute = ProtectedProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => ProtectedRoute,
+} as any)
 const ProtectedBoardsRoute = ProtectedBoardsRouteImport.update({
   id: '/boards',
   path: '/boards',
@@ -66,6 +72,7 @@ const ProtectedBoardsBoardIdRoute = ProtectedBoardsBoardIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof ProtectedIndexRoute
   '/boards': typeof ProtectedBoardsRouteWithChildren
+  '/profile': typeof ProtectedProfileRoute
   '/forgot-password': typeof PublicForgotPasswordRoute
   '/login': typeof PublicLoginRoute
   '/register': typeof PublicRegisterRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof ProtectedIndexRoute
   '/boards': typeof ProtectedBoardsRouteWithChildren
+  '/profile': typeof ProtectedProfileRoute
   '/forgot-password': typeof PublicForgotPasswordRoute
   '/login': typeof PublicLoginRoute
   '/register': typeof PublicRegisterRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/_protected': typeof ProtectedRouteWithChildren
   '/_public': typeof PublicRouteWithChildren
   '/_protected/boards': typeof ProtectedBoardsRouteWithChildren
+  '/_protected/profile': typeof ProtectedProfileRoute
   '/_public/forgot-password': typeof PublicForgotPasswordRoute
   '/_public/login': typeof PublicLoginRoute
   '/_public/register': typeof PublicRegisterRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/boards'
+    | '/profile'
     | '/forgot-password'
     | '/login'
     | '/register'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/boards'
+    | '/profile'
     | '/forgot-password'
     | '/login'
     | '/register'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/_protected'
     | '/_public'
     | '/_protected/boards'
+    | '/_protected/profile'
     | '/_public/forgot-password'
     | '/_public/login'
     | '/_public/register'
@@ -182,6 +194,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicForgotPasswordRouteImport
       parentRoute: typeof PublicRoute
     }
+    '/_protected/profile': {
+      id: '/_protected/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProtectedProfileRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/_protected/boards': {
       id: '/_protected/boards'
       path: '/boards'
@@ -213,11 +232,13 @@ const ProtectedBoardsRouteWithChildren = ProtectedBoardsRoute._addFileChildren(
 
 interface ProtectedRouteChildren {
   ProtectedBoardsRoute: typeof ProtectedBoardsRouteWithChildren
+  ProtectedProfileRoute: typeof ProtectedProfileRoute
   ProtectedIndexRoute: typeof ProtectedIndexRoute
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedBoardsRoute: ProtectedBoardsRouteWithChildren,
+  ProtectedProfileRoute: ProtectedProfileRoute,
   ProtectedIndexRoute: ProtectedIndexRoute,
 }
 

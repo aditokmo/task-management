@@ -1,9 +1,10 @@
-import { Outlet, useMatchRoute } from '@tanstack/react-router';
-import { Bell, Check, ChevronDown, LogOut, Plus, X } from 'lucide-react';
+import { Outlet, useMatchRoute, useNavigate } from '@tanstack/react-router';
+import { Bell, Check, ChevronDown, LogOut, Plus, X, User } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
     Avatar,
     AvatarFallback,
+    AvatarImage,
 } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,6 +38,7 @@ function getInitials(name?: string, email?: string) {
 }
 
 export function MainLayout() {
+    const navigate = useNavigate();
     const matchRoute = useMatchRoute();
     const user = useAuthStore((state) => state.user);
     const openCreateBoardDialog = useBoardUIStore((state) => state.openCreateDialog);
@@ -209,6 +211,7 @@ export function MainLayout() {
                                     )}
                                 >
                                     <Avatar size="default" className="bg-muted">
+                                        {user?.profileImage && <AvatarImage src={user.profileImage} alt={user.name} />}
                                         <AvatarFallback>{getInitials(user?.name, user?.email)}</AvatarFallback>
                                     </Avatar>
 
@@ -235,6 +238,15 @@ export function MainLayout() {
                                             </span>
                                         </DropdownMenuLabel>
                                     </DropdownMenuGroup>
+
+                                    <DropdownMenuSeparator />
+
+                                    <DropdownMenuItem
+                                        onClick={() => navigate({ to: '/profile' })}
+                                    >
+                                        <User className="size-4" />
+                                        Profile Settings
+                                    </DropdownMenuItem>
 
                                     <DropdownMenuSeparator />
 

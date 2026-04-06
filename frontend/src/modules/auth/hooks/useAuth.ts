@@ -11,10 +11,11 @@ export const useAuth = () => {
     const setAccessToken = useAuthStore((state) => state.setAccessToken);
     const clearAuth = useAuthStore((state) => state.clearAuth);
 
-    const toAuthUser = (user: { id: string; email: string; name?: string }) => ({
+    const toAuthUser = (user: { id: string; email: string; name?: string; profileImage?: string }) => ({
         id: user.id,
         email: user.email,
         ...(user.name ? { name: user.name } : {}),
+        ...(user.profileImage ? { profileImage: user.profileImage } : {}),
     });
 
     const login = useMutation({
@@ -54,6 +55,11 @@ export const useAuth = () => {
     const refresh = useMutation({
         mutationFn: AuthService.refresh,
         onSuccess: async (res) => {
+            if (res.user && res.accessToken) {
+                setAuth(toAuthUser(res.user), res.accessToken);
+                return;
+            }
+
             if (res.accessToken) {
                 setAccessToken(res.accessToken);
             }

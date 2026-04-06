@@ -7,6 +7,7 @@ import {
   Req,
   Res,
   UseGuards,
+  Put,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
@@ -14,6 +15,8 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtRefreshGuard } from './jwt-refresh.guard';
 import type { JwtPayload } from './types/jwt-payload.type';
 import type { GoogleProfile } from './types/google-profile.type';
@@ -23,7 +26,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   @Post('register')
   async register(
@@ -109,5 +112,33 @@ export class AuthController {
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+  }
+
+  @Get('profile')
+  @UseGuards(AuthGuard('jwt'))
+  async getProfile(@Req() request: Request) {
+    const payload = request.user as JwtPayload;
+    return this.authService.getProfile(payload.sub);
+  }
+
+  @Put('profile')
+  @UseGuards(AuthGuard('jwt'))
+  async updateProfile(
+    @Req() request: Request,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    const payload = request.user as JwtPayload;
+    return this.authService.updateProfile(payload.sub, dto);
+  }
+
+  @Post('change-password')
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(200)
+  async changePassword(
+    @Req() request: Request,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    const payload = request.user as JwtPayload;
+    return this.authService.changePassword(payload.sub, dto);
   }
 }

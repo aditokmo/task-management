@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -9,6 +10,8 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import type { LoginDto } from './dto/login.dto';
 import type { RegisterDto } from './dto/register.dto';
+import type { UpdateProfileDto } from './dto/update-profile.dto';
+import type { ChangePasswordDto } from './dto/change-password.dto';
 import type { JwtPayload } from './types/jwt-payload.type';
 import type { GoogleProfile } from './types/google-profile.type';
 
@@ -18,7 +21,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   private get userModel() {
     return (this.prisma as any).user;
@@ -42,7 +45,12 @@ export class AuthService {
       },
     });
 
-    return this.buildAuthResponse(user.id, user.email, user.name ?? undefined);
+    return this.buildAuthResponse(
+      user.id,
+      user.email,
+      user.name ?? undefined,
+      user.profileImage ?? undefined,
+    );
   }
 
   async login(dto: LoginDto) {
@@ -61,7 +69,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    return this.buildAuthResponse(user.id, user.email, user.name ?? undefined);
+    return this.buildAuthResponse(
+      user.id,
+      user.email,
+      user.name ?? undefined,
+      user.profileImage ?? undefined,
+    );
   }
 
   async googleLogin(profile: GoogleProfile) {
@@ -73,6 +86,7 @@ export class AuthService {
         existingByGoogle.id,
         existingByGoogle.email,
         existingByGoogle.name ?? undefined,
+        existingByGoogle.profileImage ?? undefined,
       );
     }
 
@@ -89,6 +103,7 @@ export class AuthService {
         updated.id,
         updated.email,
         updated.name ?? undefined,
+        updated.profileImage ?? undefined,
       );
     }
 
@@ -100,7 +115,12 @@ export class AuthService {
       },
     });
 
-    return this.buildAuthResponse(user.id, user.email, user.name ?? undefined);
+    return this.buildAuthResponse(
+      user.id,
+      user.email,
+      user.name ?? undefined,
+      user.profileImage ?? undefined,
+    );
   }
 
   async refresh(userId: string) {
@@ -117,13 +137,19 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token expired');
     }
 
-    return this.buildAuthResponse(user.id, user.email, user.name ?? undefined);
+    return this.buildAuthResponse(
+      user.id,
+      user.email,
+      user.name ?? undefined,
+      user.profileImage ?? undefined,
+    );
   }
 
   private async buildAuthResponse(
     userId: string,
     email: string,
     name?: string,
+    profileImage?: string,
   ) {
     const payload: JwtPayload = { sub: userId, email };
 
@@ -148,9 +174,90 @@ export class AuthService {
         id: userId,
         email,
         name,
+        profileImage,
       },
       accessToken,
       refreshToken,
     };
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.userModel.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        profileImage: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    return user;
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.userModel.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const updatedUser = await this.userModel.update({
+      where: { id: userId },
+      data: {
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.profileImage !== undefined && { profileImage: dto.profileImage }),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        profileImage: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return updatedUser;
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.userModel.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (!user.passwordHash) {
+      throw new BadRequestException('Password authentication not available for this account');
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(
+      dto.currentPassword,
+      user.passwordHash,
+    );
+
+    if (!isCurrentPasswordValid) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    const newPasswordHash = await bcrypt.hash(dto.newPassword, 10);
+
+    await this.userModel.update({
+      where: { id: userId },
+      data: { passwordHash: newPasswordHash },
+    });
+
+    return { success: true, message: 'Password changed successfully' };
   }
 }

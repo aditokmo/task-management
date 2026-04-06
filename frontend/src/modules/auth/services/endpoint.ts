@@ -6,6 +6,8 @@ export const ENDPOINTS = {
         REFRESH: '/auth/refresh',
         FORGOT_PASSWORD: '/auth/forgot-password',
         GOOGLE: '/auth/google',
+        PROFILE: '/auth/profile',
+        CHANGE_PASSWORD: '/auth/change-password',
     },
 } as const;
 

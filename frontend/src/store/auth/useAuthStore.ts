@@ -8,6 +8,7 @@ interface AuthState {
     accessToken: string | null;
     setAuth: (user: AuthUser, accessToken: string) => void;
     setAccessToken: (accessToken: string) => void;
+    setUser: (user: Partial<AuthUser>) => void;
     clearAuth: () => void;
 }
 
@@ -27,6 +28,10 @@ export const useAuthStore = create<AuthState>()(
             setAccessToken: (accessToken) => set({
                 accessToken,
             }),
+
+            setUser: (userData) => set((state) => ({
+                user: state.user ? { ...state.user, ...userData } : null,
+            })),
 
             clearAuth: () => set({
                 user: null,
