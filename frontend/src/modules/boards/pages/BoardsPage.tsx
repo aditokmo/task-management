@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useAuthStore } from '@/store';
+import { useAuthStore, useBoardUIStore } from '@/store';
 import { useAddBoardMembers, useBoardMembers, useBoards, useDeleteBoard, useOpenBoard, useRemoveBoardMember, useUpdateBoard } from '../hooks';
 
 const normalizeEmails = (emails: string[]) =>
@@ -49,11 +49,13 @@ export function BoardsPage() {
     const currentUserEmail = useAuthStore((state) => state.user?.email?.toLowerCase() ?? '');
     const { data: boards = [], isLoading } = useBoards();
     const createBoard = useOpenBoard();
+    const isCreateModalOpen = useBoardUIStore((state) => state.isCreateDialogOpen);
+    const openCreateBoardDialog = useBoardUIStore((state) => state.openCreateDialog);
+    const closeCreateBoardDialog = useBoardUIStore((state) => state.closeCreateDialog);
     const updateBoard = useUpdateBoard();
     const addBoardMembers = useAddBoardMembers();
     const removeBoardMember = useRemoveBoardMember();
     const deleteBoard = useDeleteBoard();
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [boardName, setBoardName] = useState('');
     const [memberEmails, setMemberEmails] = useState<string[]>(['']);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -208,7 +210,7 @@ export function BoardsPage() {
             memberEmails: normalizedMemberEmails,
         });
         resetCreateForm();
-        setIsCreateModalOpen(false);
+        closeCreateBoardDialog();
     };
 
     const handleRemoveMember = async (memberUserId: string) => {
@@ -252,20 +254,7 @@ export function BoardsPage() {
 
     return (
         <main className="px-4 py-5 sm:px-6 sm:py-6">
-            <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
-                <header className="flex items-center justify-between rounded-xl border bg-card/90 p-4">
-                    <div className="flex-col">
-                        <h1 className="text-xl font-semibold tracking-tight">Boards</h1>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            Select one of your boards or create a new board for your team.
-                        </p>
-                    </div>
-                    <Button onClick={() => setIsCreateModalOpen(true)}>
-                        <Plus className="size-4" />
-                        New Board
-                    </Button>
-                </header>
-
+            <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
                 <section>
                     <div className="mb-3 flex items-center justify-between gap-3">
                         <h2 className="text-sm font-semibold">Your boards</h2>
@@ -521,7 +510,18 @@ export function BoardsPage() {
                     </DialogContent>
                 </Dialog>
 
-                <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+                <Dialog
+                    open={isCreateModalOpen}
+                    onOpenChange={(open) => {
+                        if (open) {
+                            openCreateBoardDialog();
+                            return;
+                        }
+
+                        resetCreateForm();
+                        closeCreateBoardDialog();
+                    }}
+                >
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Create a new board</DialogTitle>
@@ -596,7 +596,7 @@ export function BoardsPage() {
                                 variant="outline"
                                 onClick={() => {
                                     resetCreateForm();
-                                    setIsCreateModalOpen(false);
+                                    closeCreateBoardDialog();
                                 }}
                             >
                                 Cancel
