@@ -1,6 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { useBoard } from '@/modules/boards/hooks';
 import { KanbanDashboard } from '@/modules/tasks/pages';
+import { useAuthStore } from '@/store';
 
 export const Route = createFileRoute('/_protected/boards/$boardId')({
     component: BoardDashboardPage,
@@ -9,6 +10,7 @@ export const Route = createFileRoute('/_protected/boards/$boardId')({
 function BoardDashboardPage() {
     const { boardId } = Route.useParams();
     const { data: board, isLoading, isError } = useBoard(boardId);
+    const currentUserId = useAuthStore((state) => state.user?.id);
 
     if (isLoading) {
         return (
@@ -30,5 +32,11 @@ function BoardDashboardPage() {
         );
     }
 
-    return <KanbanDashboard boardId={boardId} boardName={board.name} />;
+    return (
+        <KanbanDashboard
+            boardId={boardId}
+            boardName={board.name}
+            canManageMembers={board.ownerId === currentUserId}
+        />
+    );
 }

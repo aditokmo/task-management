@@ -25,6 +25,7 @@ export interface BoardMember {
     id: string;
     email: string;
     name: string | null;
+    profileImage?: string;
     role: 'owner' | 'member';
     status: 'pending' | 'accepted' | 'declined';
 }

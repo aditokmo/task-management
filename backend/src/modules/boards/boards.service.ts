@@ -15,6 +15,7 @@ export interface BoardMemberUser {
     id: string;
     email: string;
     name: string | null;
+    profileImage?: string;
     role: 'owner' | 'member';
     status: 'pending' | 'accepted' | 'declined';
 }
@@ -32,6 +33,7 @@ interface OwnerBoardData {
         id: string;
         email: string;
         name: string | null;
+        profileImage: string | null;
     };
     members: Array<{
         id: string;
@@ -41,6 +43,7 @@ interface OwnerBoardData {
             id: string;
             email: string;
             name: string | null;
+            profileImage: string | null;
         };
     }>;
 }
@@ -125,6 +128,7 @@ export class BoardsService {
                         id: true,
                         email: true,
                         name: true,
+                        profileImage: true,
                     },
                 },
                 members: {
@@ -135,6 +139,7 @@ export class BoardsService {
                                 id: true,
                                 email: true,
                                 name: true,
+                                profileImage: true,
                             },
                         },
                     },
@@ -151,6 +156,52 @@ export class BoardsService {
         return board as OwnerBoardData;
     }
 
+    private async getAccessibleBoardOrThrow(
+        userId: string,
+        boardId: string,
+    ): Promise<OwnerBoardData> {
+        const board = await this.boardModel.findFirst({
+            where: {
+                id: boardId,
+                OR: [
+                    { ownerId: userId },
+                    { members: { some: { userId, status: 'accepted' } } },
+                ],
+            },
+            include: {
+                owner: {
+                    select: {
+                        id: true,
+                        email: true,
+                        name: true,
+                        profileImage: true,
+                    },
+                },
+                members: {
+                    orderBy: { createdAt: 'asc' },
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                email: true,
+                                name: true,
+                                profileImage: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!board) {
+            throw new NotFoundException(
+                'Board not found or you do not have permission to view it',
+            );
+        }
+
+        return board as OwnerBoardData;
+    }
+
     private buildMembersResponse(board: OwnerBoardData): BoardMembersResponse {
         return {
             boardId: board.id,
@@ -159,6 +210,9 @@ export class BoardsService {
                     id: board.owner.id,
                     email: board.owner.email,
                     name: board.owner.name,
+                    ...(board.owner.profileImage
+                        ? { profileImage: board.owner.profileImage }
+                        : {}),
                     role: 'owner',
                     status: 'accepted',
                 },
@@ -167,6 +221,9 @@ export class BoardsService {
                         id: membership.user.id,
                         email: membership.user.email,
                         name: membership.user.name,
+                        ...(membership.user.profileImage
+                            ? { profileImage: membership.user.profileImage }
+                            : {}),
                         role: 'member' as const,
                         status: membership.status,
                     }),
@@ -411,7 +468,7 @@ export class BoardsService {
         userId: string,
         boardId: string,
     ): Promise<BoardMembersResponse> {
-        const board = await this.getOwnerBoardOrThrow(userId, boardId);
+        const board = await this.getAccessibleBoardOrThrow(userId, boardId);
         return this.buildMembersResponse(board);
     }
 

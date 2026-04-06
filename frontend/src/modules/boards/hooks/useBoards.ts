@@ -128,7 +128,7 @@ export const useAddBoardMembers = () => {
         mutationFn: ({ boardId, memberEmails }: AddBoardMembersInput) =>
             BoardsService.addMembers(boardId, { memberEmails }),
         onSuccess: async (members: BoardMembersResponse) => {
-            toast.success('Members added successfully');
+            toast.success('Invite has been sent');
             await queryClient.invalidateQueries({ queryKey: boardsQueryKey });
             queryClient.setQueryData(getBoardMembersQueryKey(userId, members.boardId), members);
         },

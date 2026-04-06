@@ -1,5 +1,7 @@
 import { memo } from 'react';
 import { Draggable, Droppable } from '@hello-pangea/dnd';
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { Task, TaskStatus } from '../types';
 import { TaskCard } from './TaskCard';
 
@@ -8,15 +10,21 @@ interface KanbanColumnProps {
     title: string;
     tasks: Task[];
     onTaskClick: (taskId: string) => void;
+    onCreateTask: () => void;
 }
 
-function KanbanColumnComponent({ status, title, tasks, onTaskClick }: KanbanColumnProps) {
+function KanbanColumnComponent({ status, title, tasks, onTaskClick, onCreateTask }: KanbanColumnProps) {
     return (
         <div className="flex min-h-[24rem] flex-col rounded-xl border bg-background/60 p-3 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-sm font-medium text-foreground">{title}</h3>
                 <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{tasks.length}</span>
             </div>
+
+            <Button type="button" variant="outline" size="sm" className="mb-3 w-full" onClick={onCreateTask}>
+                <Plus className="size-4" />
+                New Task
+            </Button>
 
             <Droppable droppableId={status}>
                 {(provided, snapshot) => (

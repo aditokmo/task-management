@@ -2,6 +2,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import type { DropResult } from '@hello-pangea/dnd';
 import { DragDropContext } from '@hello-pangea/dnd';
 import gsap from 'gsap';
+import type { BoardMember } from '@/modules/boards/types/board.types';
 import { useTaskUIStore } from '@/store';
 import { KANBAN_COLUMNS } from '../constants';
 import { useMoveTask, useTaskSocketSync, useTasks } from '../hooks';
@@ -11,11 +12,14 @@ import { KanbanColumn } from './KanbanColumn';
 
 interface KanbanBoardProps {
     boardId: string;
+    selectedAssigneeIds: string[];
+    members: BoardMember[];
 }
 
-export function KanbanBoard({ boardId }: KanbanBoardProps) {
+export function KanbanBoard({ boardId, selectedAssigneeIds, members }: KanbanBoardProps) {
     const { data: tasks = [], isLoading } = useTasks(boardId);
     const moveTask = useMoveTask(boardId);
+    const openCreateDialog = useTaskUIStore((state) => state.openCreateDialog);
     const openTaskDetail = useTaskUIStore((state) => state.openTaskDetail);
     const boardRef = useRef<HTMLDivElement | null>(null);
 
@@ -42,8 +46,30 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
     }, [tasks.length]);
 
     const groupedTasks = useMemo(() => {
+        const selectedMemberNames = new Set(
+            members
+                .filter((member) => selectedAssigneeIds.includes(member.id))
+                .map((member) => member.name?.trim().toLowerCase())
+                .filter((name): name is string => Boolean(name)),
+        );
+        const selectedAssigneeIdSet = new Set(selectedAssigneeIds);
+
+        const filteredTasks = selectedAssigneeIds.length > 0
+            ? tasks.filter((task) => {
+                if (task.assigneeId && selectedAssigneeIdSet.has(task.assigneeId)) {
+                    return true;
+                }
+
+                if (!task.assigneeName) {
+                    return false;
+                }
+
+                return selectedMemberNames.has(task.assigneeName.trim().toLowerCase());
+            })
+            : tasks;
+
         return KANBAN_COLUMNS.reduce<Record<TaskStatus, Task[]>>((accumulator, column) => {
-            accumulator[column.status] = sortTasksByPosition(tasks.filter((task) => task.status === column.status));
+            accumulator[column.status] = sortTasksByPosition(filteredTasks.filter((task) => task.status === column.status));
             return accumulator;
         }, {
             [TASK_STATUS.BACKLOG]: [],
@@ -51,7 +77,7 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
             [TASK_STATUS.IN_PROGRESS]: [],
             [TASK_STATUS.DONE]: [],
         });
-    }, [tasks]);
+    }, [members, selectedAssigneeIds, tasks]);
 
     const onDragEnd = useCallback(
         (result: DropResult) => {
@@ -90,6 +116,7 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
                             title={column.title}
                             tasks={groupedTasks[column.status]}
                             onTaskClick={openTaskDetail}
+                            onCreateTask={openCreateDialog}
                         />
                     ))}
                 </div>
