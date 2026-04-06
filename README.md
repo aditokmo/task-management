@@ -13,7 +13,7 @@ Full-stack task management app with:
 - [x] Tasks: Full CRUD, Kanban board, drag-and-drop, reorder/move.
 - [x] Real-time: WebSocket live sync for task created/updated/moved/deleted events.
 - [x] Notifications: Fetch notifications, unread counter, mark-as-read, invite-related notifications.
-- [ ] Profile Settings: Add profile settings so user can change name, email and profile image
+- [x] Profile Settings: Add profile settings so user can change name, email and profile image
 - [ ] Member Display: Display members
 - [ ] Task Filtering: Show only tasks for selected members that are only assign to him
 - [ ] Board Customization: Add themes for boards
